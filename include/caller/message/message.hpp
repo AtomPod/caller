@@ -1,0 +1,38 @@
+#ifndef CALLER_MESSAGE_HPP
+#define CALLER_MESSAGE_HPP
+
+#include <caller/core.hpp>
+#include <caller/message/declare.hpp>
+#include <caller/common/id.hpp>
+#include <caller/context/context.hpp>
+
+CALLER_BEGIN
+
+/**
+ * @brief The Message class 消息类，用于解析使用，外部基础该类，
+ *        传入request或者response中，在解析的时候，可通过内部解析
+ *        这样可通过模板等基础，在外部直接给予body解析，而内部通过一个
+ *        外部构建器，用来解析header并传回该类中，或者通过一个中间件
+ *        直接读取对应解析ID后再进行判断给内部解析，这取决于是否使用
+ *        中间件来处理
+ */
+class Message
+{
+public:
+    static const Context::KeyType   MetaTag;
+public:
+    Message();
+    virtual ~Message();
+public:
+    virtual ID          id() const = 0;
+
+    virtual void setHeader(MessageHeaderPtr header) = 0;
+    virtual MessageHeaderPtr header() const = 0;
+
+    virtual void setBody(MessageBodyPtr body) = 0;
+    virtual MessageBodyPtr  body() const = 0;
+};
+
+CALLER_END
+
+#endif // MESSAGE_HPP
