@@ -13,7 +13,7 @@ FutureInterfaceBase::~FutureInterfaceBase()
 
 }
 
-void FutureInterfaceBase::reportErrorCode(int errorcode)
+void FutureInterfaceBase::reportErrorCode(const std::error_code &errorcode)
 {
     FutureInterfaceBaseImpl::Locker locker(_M_Ptr->m_mutex);
     if (_M_Ptr->m_state.load(std::memory_order_relaxed) & (Finished | Canceled)) {
@@ -21,7 +21,7 @@ void FutureInterfaceBase::reportErrorCode(int errorcode)
     }
 
     if (_M_Ptr->switchStateTo(FutureInterfaceBase::Canceled)) {
-        _M_Ptr->m_statusCode.store(errorcode, std::memory_order_relaxed);
+        _M_Ptr->m_errorCode = errorcode;
         _M_Ptr->m_waitCondition.notify_all();
         _M_Ptr->sendCallOut(FutureInterfaceBase::Canceled, &locker);
     }
@@ -88,9 +88,10 @@ bool FutureInterfaceBase::isCanceled() const
     return queryState(Canceled);
 }
 
-int FutureInterfaceBase::errorCode() const
+std::error_code FutureInterfaceBase::errorCode() const
 {
-    return _M_Ptr->m_statusCode.load(std::memory_order_acquire);
+    FutureInterfaceBaseImpl::Locker locker(_M_Ptr->m_mutex);
+    return _M_Ptr->m_errorCode;
 }
 
 void *FutureInterfaceBase::store() const

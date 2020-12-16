@@ -31,7 +31,7 @@ public:
     FutureInterfaceBase(size_t storeSpace = 0);
     ~FutureInterfaceBase();
 public:
-    void reportErrorCode(int errorcode);
+    void reportErrorCode(const std::error_code &errorcode);
     void reportException(const std::exception_ptr &e);
     void reportFinished();
     void reportCanceled();
@@ -43,7 +43,7 @@ public:
     bool isFinished() const;
     bool isCanceled() const;
 public:
-    int                 errorCode()  const;
+    std::error_code     errorCode()  const;
     std::exception_ptr  exception()  const;
     std::mutex          &mutex()     const;
 protected:

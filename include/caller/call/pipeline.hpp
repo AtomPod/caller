@@ -5,6 +5,7 @@
 #include <caller/call/declare.hpp>
 #include <caller/context/declare.hpp>
 #include <caller/common/bytebuffer.hpp>
+#include <caller/common/any.hpp>
 
 CALLER_BEGIN
 
@@ -21,10 +22,15 @@ public:
     Pipeline& operator=(Pipeline&&) = delete;
     ~Pipeline() = default;
 public:
-    void propagate(IOContextPtr ctx,
-                    ByteBuffer data,
-                    ServicePtr service);
     void append(const PipelineStagePtr &stage);
+
+    void pipelineActive(PipelineContextPtr context)         ;
+    void pipelineInactive(PipelineContextPtr context)       ;
+    void pipelineWriteComplete(PipelineContextPtr context)  ;
+    void pipelineReadComplete(PipelineContextPtr context)   ;
+    void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) ;
+    void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object) ;
+    void causeException(PipelineContextPtr context, const std::exception &e) ;
 private:
     const PipelineStagePtr _M_LastStage;
     PipelineStageSet       _M_Stages;

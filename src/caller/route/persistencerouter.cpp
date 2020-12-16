@@ -1,5 +1,5 @@
 #include <caller/route/persistencerouter.hpp>
-#include <caller/call/response.hpp>
+//#include <caller/call/response.hpp>
 #include <caller/message/message.hpp>
 
 CALLER_BEGIN
@@ -16,16 +16,16 @@ PersistenceRouter::~PersistenceRouter()
 
 void PersistenceRouter::post(ResponsePtr resp)
 {
-    MessagePtr message = resp->rawMessage();
-    if (message == nullptr)
-        return;
-    ID id = message->id();
+//    MessagePtr message = resp->rawMessage();
+//    if (message == nullptr)
+//        return;
+//    ID id = message->id();
 
-    for (auto route : _M_Routes) {
-        if (route->match(id)) {
-            route->post(resp);
-        }
-    }
+//    for (auto route : _M_Routes) {
+//        if (route->match(id)) {
+//            route->post(resp);
+//        }
+//    }
 }
 
 bool PersistenceRouter::add(RoutePtr route)

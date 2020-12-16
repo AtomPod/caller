@@ -39,6 +39,10 @@ typedef std::shared_ptr<AsioTcpService> AsioTcpServicePtr;
 
 class Transport;
 typedef std::shared_ptr<Transport> TransportPtr;
+
+class PipelineContext;
+typedef std::shared_ptr<PipelineContext> PipelineContextPtr;
+
 CALLER_END
 
 #endif // CALLER_DECLARE_HPP

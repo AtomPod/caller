@@ -5,6 +5,7 @@
 #define CALLER_BEGIN namespace caller {
 #define CALLER_END   }
 #define CALLER ::caller::
+#define USING_NAMESPACE_CALLER using namespace caller;
 
 #define CALLER_NOEXCEPT noexcept
 

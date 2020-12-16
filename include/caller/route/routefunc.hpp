@@ -2,8 +2,6 @@
 #define ROUTEFUNC_HPP
 #include <caller/route/route.hpp>
 #include <caller/route/declare.hpp>
-#include <caller/call/iocontext.hpp>
-#include <caller/call/response.hpp>
 #include <functional>
 
 CALLER_BEGIN

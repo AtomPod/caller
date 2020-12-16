@@ -37,7 +37,6 @@ public:
     std::exception_ptr                          m_exceptionPtr;
     Signal                                      m_signal;
     Storage                                     m_storeData;
-    AtomicInt                                   m_statusCode;
     StdErrorCode                                m_errorCode;
 };
 

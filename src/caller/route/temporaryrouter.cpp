@@ -1,5 +1,5 @@
 #include <caller/route/temporaryrouter.hpp>
-#include <caller/call/response.hpp>
+//#include <caller/call/response.hpp>
 #include <caller/message/message.hpp>
 #include <algorithm>
 
@@ -17,21 +17,21 @@ TemporaryRouter::~TemporaryRouter()
 
 void TemporaryRouter::post(ResponsePtr resp)
 {
-    MessagePtr message = resp->rawMessage();
-    if (message == nullptr)
-        return;
+//    MessagePtr message = resp->rawMessage();
+//    if (message == nullptr)
+//        return;
 
-    ID id = message->id();
-    for (auto beg = _M_Routes.begin(); beg != _M_Routes.end(); ) {
-        auto route = *beg;
+//    ID id = message->id();
+//    for (auto beg = _M_Routes.begin(); beg != _M_Routes.end(); ) {
+//        auto route = *beg;
 
-        if (route->match(id)) {
-            beg = _M_Routes.erase(beg);
-            route->post(resp);
-        } else {
-            ++beg;
-        }
-    }
+//        if (route->match(id)) {
+//            beg = _M_Routes.erase(beg);
+//            route->post(resp);
+//        } else {
+//            ++beg;
+//        }
+//    }
 }
 
 bool TemporaryRouter::add(RoutePtr route)

@@ -14,7 +14,8 @@ protected:
 public:
     virtual ~AsioExecutor()             override;
 public:
-    virtual void execute(Task task)     override;
+    virtual void       execute(Task task)     override;
+    virtual CancelFunc execute(Task task, const std::chrono::high_resolution_clock::duration &expiry) override;
     virtual ExecutionContext* context() override;
 private:
     AsioExecutionContext &_M_Context;

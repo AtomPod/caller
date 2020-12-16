@@ -1,4 +1,6 @@
 #include <caller/executor/asio/asioexecutor.hpp>
+#include <caller/context/context.hpp>
+#include <asio.hpp>
 #include <iostream>
 #include <thread>
 
@@ -10,7 +12,28 @@ AsioExecutor::AsioExecutor(AsioExecutionContext &context) : _M_Context(context)
 }
 
 void AsioExecutor::execute(Task task) {
+    if (task == nullptr)
+        return;
+
     _M_Context.rawContext().post(task);
+}
+
+AsioExecutor::CancelFunc AsioExecutor::execute(Executor::Task task, const std::chrono::steady_clock::duration &expiry)
+{
+    AsioExecutionContext::AsioIOContext& context = _M_Context.rawContext();
+
+    std::shared_ptr<::asio::steady_timer> timer  = std::make_shared<::asio::steady_timer>(context);
+    timer->expires_from_now(expiry);
+    timer->async_wait([task, timer](const std::error_code &e) {
+        if (!e) {
+            task();
+        }
+    });
+
+    return [timer]() mutable {
+        std::error_code e;
+        timer->cancel(e);
+    };
 }
 
 AsioExecutor::~AsioExecutor()

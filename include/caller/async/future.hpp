@@ -14,7 +14,7 @@ class Future
 public:
     typedef FutureInterfaceBase::CancelFunc CancelFunc;
     typedef std::function<void(T)>          FinishedCallback;
-    typedef std::function<void(int errcode, const std::exception_ptr &e)> CanceledCallback;
+    typedef std::function<void(const std::error_code errcode, const std::exception_ptr &e)> CanceledCallback;
 public:
     Future() : m_interface(makeEmptFutureInterface<T>()){}
     Future(FutureInterface<T> *i) : m_interface(*i) {}
@@ -112,7 +112,7 @@ class Future<void>
 public:
     typedef FutureInterfaceBase::CancelFunc CancelFunc;
     typedef std::function<void()> FinishedCallback;
-    typedef std::function<void(int errcode, const std::exception_ptr &e)> CanceledCallback;
+    typedef std::function<void(const std::error_code& errcode, const std::exception_ptr &e)> CanceledCallback;
 public:
     Future() : m_interface(makeEmptFutureInterface<void>()) {}
     Future(FutureInterface<void> *i) : m_interface(*i) {}

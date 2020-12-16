@@ -6,7 +6,7 @@ static FutureInterfaceBase::CancelFunc emptyCancelFunc = []() {};
 
 FutureInterfaceBaseImpl::FutureInterfaceBaseImpl(size_t storeSize)
     : m_state(FutureInterfaceBase::Pending), m_exceptionPtr(nullptr),
-      m_storeData(nullptr), m_statusCode(0)
+      m_storeData(nullptr)
 {
     if (storeSize > 0) {
         m_storeData = new StorageElement[storeSize];

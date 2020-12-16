@@ -10,26 +10,19 @@ include(third_party/asio/AsioLibrary.pri)
 include(third_party/sigslot/SigSlotLibrary.pri)
 
 SOURCES += \
+        src/caller/call/sockethandler.cpp \
+        src/caller/call/pipelinereadstage.cpp \
+        src/caller/call/pipelinewritestage.cpp \
+        src/caller/call/endpoint.cpp \
+        src/caller/call/pipelinecontext.cpp \
         src/caller/context/valuecontext.cpp \
         src/caller/context/cancelablecontext.cpp \
         src/caller/route/persistencerouter.cpp \
         src/caller/route/temporaryrouter.cpp \
         src/caller/route/broadcastrouter.cpp \
-        src/caller/call/transport.cpp \
-        src/caller/call/asio/asiotcpconnection.cpp \
-        src/caller/call/asio/asiotcpservice.cpp \
-        src/caller/call/underlyingservice.cpp \
-        src/caller/call/connection.cpp \
-        src/caller/call/asio/asioservice.cpp \
         src/caller/async/futureinterfacebaseimpl.cpp \
         src/caller/async/futureinterface.cpp\
-        src/caller/call/contextresponse.cpp \
-        src/caller/call/iocontext.cpp \
-        src/caller/call/request.cpp \
-        src/caller/call/response.cpp \
-        src/caller/call/service.cpp \
         src/caller/common/error.cpp \
-        src/caller/call/pipelinestagewrapper.cpp \
         src/caller/executor/asio/asioexecutor.cpp \
         src/caller/executor/threadexecutioncontext.cpp \
         src/caller/message/messagefactory.cpp \
@@ -40,11 +33,7 @@ SOURCES += \
         src/caller/message/message.cpp \
         src/caller/common/serializable.cpp \
         src/caller/common/ringbuffer.cpp \
-        src/caller/middleware/crc_pipeline_stage.cpp \
-        src/caller/middleware/message_pipeline_stage.cpp \
         src/caller/common/stringview.cpp \
-        src/caller/middleware/router_pipeline_stage.cpp \
-        src/caller/middleware/unpack_pipeline_stage.cpp \
         src/caller/route/routefunc.cpp \
         src/caller/route/simplerouter.cpp \
         src/caller/route/declare.cpp \
@@ -61,22 +50,14 @@ HEADERS += \
     include/caller/async/futureinterfacebaseimpl.hpp \
     include/caller/async/futureinterface.hpp\
     include/caller/async/future.hpp \
-    include/caller/call/asio/asioservice.hpp \
-    include/caller/call/asio/asiotcpconnection.hpp \
-    include/caller/call/asio/asiotcpservice.hpp \
-    include/caller/call/connection.hpp \
-    include/caller/call/contextresponse.hpp \
-    include/caller/call/iocontext.hpp \
+    include/caller/call/endpoint.hpp \
     include/caller/call/pipeline.hpp \
+    include/caller/call/pipelinecontext.hpp \
+    include/caller/call/pipelinereadstage.hpp \
     include/caller/call/pipelinestage.hpp \
-    include/caller/call/pipelinestagewrapper.hpp \
-    include/caller/call/request.hpp \
-    include/caller/call/response.hpp \
-    include/caller/call/service.hpp \
-    include/caller/call/transport.hpp \
-    include/caller/call/underlyingservice.hpp \
+    include/caller/call/pipelinewritestage.hpp \
+    include/caller/call/sockethandler.hpp \
     include/caller/common/error.hpp \
-    include/caller/common/observerlist.hpp \
     include/caller/common/signal.hpp \
     include/caller/context/cancelablecontext.hpp \
     include/caller/context/error.hpp \
@@ -97,11 +78,6 @@ HEADERS += \
     include/caller/message/messagebody.hpp \
     include/caller/message/messagefactory.hpp \
     include/caller/message/messageheader.hpp \
-    include/caller/middleware/crc_pipeline_stage.hpp \
-    include/caller/middleware/declare.hpp \
-    include/caller/middleware/message_pipeline_stage.hpp \
-    include/caller/middleware/router_pipeline_stage.hpp \
-    include/caller/middleware/unpack_pipeline_stage.hpp \
     include/caller/route/broadcastrouter.hpp \
     include/caller/route/declare.hpp \
     include/caller/route/route.hpp \
