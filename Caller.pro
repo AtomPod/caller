@@ -10,6 +10,7 @@ include(third_party/asio/AsioLibrary.pri)
 include(third_party/sigslot/SigSlotLibrary.pri)
 
 SOURCES += \
+        src/caller/call/asio/tcpsockethandler.cpp \
         src/caller/call/sockethandler.cpp \
         src/caller/call/pipelinereadstage.cpp \
         src/caller/call/pipelinewritestage.cpp \
@@ -50,6 +51,7 @@ HEADERS += \
     include/caller/async/futureinterfacebaseimpl.hpp \
     include/caller/async/futureinterface.hpp\
     include/caller/async/future.hpp \
+    include/caller/call/asio/tcpsockethandler.hpp \
     include/caller/call/endpoint.hpp \
     include/caller/call/pipeline.hpp \
     include/caller/call/pipelinecontext.hpp \

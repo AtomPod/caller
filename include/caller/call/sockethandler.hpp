@@ -10,6 +10,15 @@ CALLER_BEGIN
 class SocketHandler
 {
 public:
+    enum ConnectivityState {
+        Idle,
+        Connecting,
+        Ready,
+        TransitentFailure,
+        Shutdown
+    };
+
+public:
     SocketHandler();
     virtual ~SocketHandler();
 public:
@@ -17,6 +26,7 @@ public:
     virtual Future<void>        connect(const Endpoint &endpoint)   = 0;
     virtual Future<void>        disconnect()                        = 0;
     virtual Future<void>        close()                             = 0;
+    virtual Future<size_t>      read(ByteBuffer buffer)             = 0;
     virtual Future<size_t>      write(const ByteBuffer &buffer)     = 0;
     virtual Executor*           executor()                          = 0;
 };
