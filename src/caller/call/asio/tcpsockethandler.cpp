@@ -1,8 +1,49 @@
 #include <caller/call/asio/tcpsockethandler.hpp>
 #include <caller/call/pipelinewritestage.hpp>
+#include <caller/call/pipelinereadstage.hpp>
 
 CALLER_BEGIN
 
+class StreamReadStage : public PipelineReadStage
+{
+public:
+    StreamReadStage() : _M_ReadBuffer(4096) {}
+    virtual ~StreamReadStage() override = default;
+public:
+    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) override {
+        auto next = nextStage();
+        if (next != nullptr) {
+            next->handleRead(context, buffer, object);
+        }
+    }
+public:
+    virtual void pipelineActive(PipelineContextPtr ctx) override {
+        ctx->read(_M_ReadBuffer);
+    }
+
+    virtual void causeException(PipelineContextPtr ctx, const std::exception &) override {
+        ctx->read(_M_ReadBuffer);
+    }
+
+    virtual void pipelineReadComplete(PipelineContextPtr ctx)  override {
+        ctx->read(_M_ReadBuffer);
+    }
+private:
+    ByteBuffer _M_ReadBuffer;
+};
+
+class ReadCompleteStage : public PipelineReadStage
+{
+public:
+    ReadCompleteStage()  {}
+    virtual ~ReadCompleteStage() override = default;
+public:
+    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) override {
+        UNUSED(buffer);
+        UNUSED(object);
+        context->notifyReadComplete();
+    }
+};
 
 class SocketWriteStage : public PipelineWriteStage
 {
@@ -16,18 +57,32 @@ public:
     virtual void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object) override {
         UNUSED(object);
 
+        FutureInterface<size_t> futureSender = _M_LastFuture;
         Future<size_t> future = _M_Handler->write(buffer);
-        future.whenFinished([context](size_t size) {
-            UNUSED(size);
+        future.whenFinished([context, futureSender](size_t size) mutable {
             context->notifyWriteComplete();
+            futureSender.reportResult(size);
         }).whenCanceled([context](const std::error_code &ec, const std::exception_ptr &e) {
             UNUSED(ec);
             UNUSED(e);
             context->notifyInactive();
         });
     }
+
+public:
+    FutureInterface<size_t> lastFuture() const
+    {
+        return _M_LastFuture;
+    }
+
+    void setLastFuture(const FutureInterface<size_t> &lastFuture)
+    {
+        _M_LastFuture = lastFuture;
+    }
+
 private:
     SocketHandler *_M_Handler;
+    FutureInterface<size_t> _M_LastFuture;
 };
 
 AsioTcpSocketHandler::AsioTcpSocketHandler(AsioExecutionContext &context)
@@ -43,11 +98,16 @@ AsioTcpSocketHandler::~AsioTcpSocketHandler()
 
 }
 
+Future<void> AsioTcpSocketHandler::bind(const Endpoint &endpoint)
+{
+    return Future<void>();
+}
+
 Future<void> AsioTcpSocketHandler::connect(const Endpoint &endpoint)
 {
     FutureInterface<void> futureSender;
     if (_M_ConnState.load(std::memory_order_acquire) == ConnectivityState::Connecting ||
-        _M_ConnState.load(std::memory_order_acquire) == ConnectivityState::Ready) {
+            _M_ConnState.load(std::memory_order_acquire) == ConnectivityState::Ready) {
         futureSender.reportErrorCode(std::make_error_code(std::errc::already_connected));
         return futureSender.future();
     }
@@ -65,18 +125,18 @@ Future<void> AsioTcpSocketHandler::disconnect()
 {
     FutureInterface<void> futureSender;
     if (setConnectivityState(ConnectivityState::Shutdown)) {
-       if (_M_Socket.is_open()) {
-           std::error_code code;
-           _M_Socket.shutdown(asio::socket_base::shutdown_both, code);
-           _M_Socket.close(code);
+        if (_M_Socket.is_open()) {
+            std::error_code code;
+            _M_Socket.shutdown(asio::socket_base::shutdown_both, code);
+            _M_Socket.close(code);
 
-           if (code) {
-               futureSender.reportErrorCode(code);
-           } else {
-               futureSender.reportFinished();
-           }
-           return futureSender.future();
-       }
+            if (code) {
+                futureSender.reportErrorCode(code);
+            } else {
+                futureSender.reportFinished();
+            }
+            return futureSender.future();
+        }
     }
     futureSender.reportErrorCode(std::make_error_code(std::errc::not_connected));
     return futureSender.future();
@@ -101,12 +161,12 @@ Future<size_t> AsioTcpSocketHandler::write(const ByteBuffer &buffer)
     asio::async_write(_M_Socket, asio::const_buffer(buffer.data(), buffer.length()),
                       asio::transfer_all(),
                       [buffer, futureSender, this](std::error_code ec, size_t length) mutable {
-         if (!ec) {
-             futureSender.reportResult(length);
-         } else {
-             setConnectivityState(ConnectivityState::TransitentFailure);
-             futureSender.reportErrorCode(ec);
-         }
+        if (!ec) {
+            futureSender.reportResult(length);
+        } else {
+            setConnectivityState(ConnectivityState::TransitentFailure);
+            futureSender.reportErrorCode(ec);
+        }
     });
     return futureSender.future();
 }
@@ -151,10 +211,11 @@ void AsioTcpSocketHandler::connectWithEndpointList(
         FutureInterface<void> futureInterface)
 {
     setConnectivityState(ConnectivityState::Connecting);
-    asio::async_connect(_M_Socket, endpoints, [futureInterface](std::error_code ec, Protocol::endpoint e) mutable {
+    asio::async_connect(_M_Socket, endpoints, [this, futureInterface](std::error_code ec, Protocol::endpoint e) mutable {
         UNUSED(e);
 
         if (ec) {
+            setConnectivityState(ConnectivityState::TransitentFailure);
             futureInterface.reportErrorCode(ec);
             return;
         }
@@ -170,7 +231,6 @@ bool AsioTcpSocketHandler::setConnectivityState(const SocketHandler::Connectivit
 
     int oldState = _M_ConnState.exchange(state, std::memory_order_acq_rel);
     if (oldState != state) {
-        onConnectivityStateChanged(state);
         return true;
     }
     return false;
@@ -178,12 +238,12 @@ bool AsioTcpSocketHandler::setConnectivityState(const SocketHandler::Connectivit
 
 void AsioTcpSocketHandler::readNext(ByteBuffer buffer, FutureInterface<size_t> futureSender)
 {
-    asio::async_read(_M_Socket, asio::buffer(buffer.data(), buffer.capacity()),
-                     [buffer, futureSender, this](std::error_code ec, size_t length) mutable {
+    _M_Socket.async_read_some(asio::buffer(buffer.data(), buffer.capacity()),
+                              [buffer, futureSender, this](std::error_code ec, size_t length) mutable {
         if (ec) {
+            setConnectivityState(ConnectivityState::TransitentFailure);
             futureSender.reportErrorCode(ec);
         } else {
-            setConnectivityState(ConnectivityState::TransitentFailure);
             futureSender.reportResult(length);
         }
     });
@@ -259,16 +319,19 @@ Future<size_t> AsioTcpPipelineContext::read(ByteBuffer buffer)
     return future;
 }
 
-void AsioTcpPipelineContext::write(const any &object, const ByteBuffer &buffer)
+Future<size_t> AsioTcpPipelineContext::write(const any &object, const ByteBuffer &buffer)
 {
+    FutureInterface<size_t> futureSender;
     auto self = shared_from_this();
-    executor()->execute([self, object, buffer]() {
+    executor()->execute([self, object, buffer, futureSender]() {
         try {
+            self->_M_SocketWriteStage->setLastFuture(futureSender);
             self->_M_WritePipeline->handleWrite(self, buffer, object);
         } catch (const std::exception &e) {
             self->notifyException(e);
         }
     });
+    return futureSender.future();
 }
 
 Executor *AsioTcpPipelineContext::executor()
@@ -328,8 +391,10 @@ void AsioTcpPipelineContext::notifyException(const std::exception &e)
 }
 
 AsioTcpPipelineContext::AsioTcpPipelineContext(AsioTcpSocketHandler *handler) : _M_Handler(handler) {
-    _M_WritePipeline = Pipeline::make(PipelineStage::create<SocketWriteStage>(handler));
-    _M_ReadPipeline  = Pipeline::make(nullptr);
+    _M_SocketWriteStage = std::make_shared<SocketWriteStage>(handler);
+    _M_WritePipeline    = Pipeline::make(_M_SocketWriteStage);
+    _M_ReadPipeline     = Pipeline::make(PipelineStage::create<ReadCompleteStage>());
+    _M_ReadPipeline->append(PipelineStage::create<StreamReadStage>());
 }
 
 CALLER_END

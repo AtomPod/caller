@@ -34,9 +34,6 @@ protected:
     void    connectWithEndpointList(const EndpointList &endpoints, FutureInterface<void> futureInterface);
     bool    setConnectivityState(const ConnectivityState &state);
     void    readNext(ByteBuffer buffer, FutureInterface<size_t> futureSender);
-
-protected:
-    virtual void onConnectivityStateChanged(const ConnectivityState &state);
 private:
     AsioExecutionContext       &_M_ExecutionContext;
     Socket                      _M_Socket;
@@ -48,6 +45,9 @@ private:
     PipelinePtr                 _M_ReadPipeline;
     PipelinePtr                 _M_WritePipeline;
 };
+
+class SocketWriteStage;
+typedef std::shared_ptr<SocketWriteStage> SocketWriteStagePtr;
 
 class AsioTcpPipelineContext : public PipelineContext, public std::enable_shared_from_this<AsioTcpPipelineContext>
 {
@@ -61,17 +61,21 @@ public:
     virtual Future<void>        disconnect()                                        override;
     virtual Future<void>        close()                                             override;
     virtual Future<size_t>      read(ByteBuffer buffer)                             override;
-    virtual void                write(const any &object, const ByteBuffer &buffer)  override;
+    virtual Future<size_t>      write(const any &object, const ByteBuffer &buffer)  override;
     virtual Executor*           executor()                                          override;
 public:
     virtual void                notifyActive() override;
     virtual void                notifyInactive() override;
     virtual void                notifyReadComplete() override;
     virtual void                notifyWriteComplete() override;
+public:
+    virtual PipelinePtr         readPipeline()          override { return _M_ReadPipeline;  }
+    virtual PipelinePtr         writePipeline()         override { return _M_WritePipeline; }
 protected:
     void                        notifyException(const std::exception &e);
 private:
     AsioTcpSocketHandler *_M_Handler;
+    SocketWriteStagePtr   _M_SocketWriteStage;
     PipelinePtr           _M_ReadPipeline;
     PipelinePtr           _M_WritePipeline;
 };

@@ -7,6 +7,11 @@ Endpoint::Endpoint()
 
 }
 
+Endpoint::~Endpoint()
+{
+
+}
+
 std::string Endpoint::host() const
 {
     return _M_Host;
