@@ -1,19 +1,18 @@
 #ifndef CALLER_CONTEXT_DECLARE_H
 #define CALLER_CONTEXT_DECLARE_H
-#include <memory>
-#include <caller/core.hpp>
+#include <caller/common/refptr.hpp>
 
 CALLER_BEGIN
 
 class Context;
-typedef std::shared_ptr<Context> ContextPtr;
-typedef std::weak_ptr<Context>   ContextWeakPtr;
+typedef RefPtr<Context>         ContextPtr;
+typedef WeakRefPtr<Context>     ContextWeakPtr;
 
 class ValueContext;
-typedef std::shared_ptr<ValueContext>   ValueContextPtr;
+typedef RefPtr<ValueContext>    ValueContextPtr;
 
 class CancelableContext;
-typedef std::shared_ptr<CancelableContext>  CancelableContextPtr;
+typedef RefPtr<CancelableContext>  CancelableContextPtr;
 
 CALLER_END
 

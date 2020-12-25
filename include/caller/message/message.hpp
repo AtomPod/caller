@@ -4,7 +4,7 @@
 #include <caller/core.hpp>
 #include <caller/message/declare.hpp>
 #include <caller/common/id.hpp>
-#include <caller/context/context.hpp>
+#include <caller/common/serializable.hpp>
 
 CALLER_BEGIN
 
@@ -16,21 +16,19 @@ CALLER_BEGIN
  *        直接读取对应解析ID后再进行判断给内部解析，这取决于是否使用
  *        中间件来处理
  */
-class Message
+class Message : public Serializable
 {
 public:
-    static const Context::KeyType   MetaTag;
+    template<typename T>
+    static MessagePtr create() {
+        return NewRefPtr<T>();
+    }
+
 public:
     Message();
     virtual ~Message();
 public:
     virtual ID          id() const = 0;
-
-    virtual void setHeader(MessageHeaderPtr header) = 0;
-    virtual MessageHeaderPtr header() const = 0;
-
-    virtual void setBody(MessageBodyPtr body) = 0;
-    virtual MessageBodyPtr  body() const = 0;
 };
 
 CALLER_END

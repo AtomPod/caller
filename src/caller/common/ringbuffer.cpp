@@ -97,4 +97,24 @@ size_t RingBuffer::copyFrom(const RingBuffer::Element *datas, size_t len)
     return copysize;
 }
 
+size_t RingBuffer::readIndex() const
+{
+    return _M_Header;
+}
+
+void RingBuffer::setReadIndex(const size_t &M_Header)
+{
+    _M_Header = M_Header;
+}
+
+size_t RingBuffer::writeIndex() const
+{
+    return _M_Tailer;
+}
+
+void RingBuffer::setWriteIndex(const size_t &M_Tailer)
+{
+    _M_Tailer = M_Tailer;
+}
+
 CALLER_END

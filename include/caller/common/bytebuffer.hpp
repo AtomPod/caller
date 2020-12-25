@@ -8,6 +8,7 @@
 #include <functional>
 #include <iostream>
 #include <caller/common/stringview.hpp>
+#include <caller/common/refptr.hpp>
 
 CALLER_BEGIN
 
@@ -19,7 +20,7 @@ public:
     static FreeHandler newFreeHandler;
     static FreeHandler freeFreeHandler;
 protected:
-    typedef std::shared_ptr<ByteBufferImpl> Ptr;
+    typedef RefPtr<ByteBufferImpl> Ptr;
 public:
     ByteBuffer(size_t size = 0);
     ByteBuffer(char *data, size_t size, FreeHandler handler = nullptr);

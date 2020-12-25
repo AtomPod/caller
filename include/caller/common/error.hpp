@@ -1,33 +1,21 @@
 #ifndef CALLER_ERROR_HPP
 #define CALLER_ERROR_HPP
 #include <caller/core.hpp>
-#include <string>
+#include <system_error>
 
 CALLER_BEGIN
 
-class Error
-{
-public:
-    static Error Nil;
-public:
-    typedef int             Code;
-    typedef std::string     String;
-public:
-    Error(const Code &code = 0, const String &msg = "");
-    virtual ~Error();
-public:
-    Code code() const;
-    void setCode(const Code &code);
+typedef ::std::error_code Error;
+typedef ::std::errc		  GenericError;
+typedef ::std::io_errc	  IOError;
 
-    String message() const;
-    void setMessage(const String &message);
-public:
-    bool operator==(const Error &e) const { return _M_Code == e.code(); }
-    bool operator!=(const Error &e) const { return !(*this == e);       }
-private:
-    Code    _M_Code;
-    String  _M_Message;
-};
+inline Error MakeError(const GenericError &e) {
+    return std::make_error_code(e);
+}
+
+inline Error MakeError(const IOError &e) {
+    return std::make_error_code(e);
+}
 
 CALLER_END
 

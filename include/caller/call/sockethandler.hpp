@@ -7,7 +7,7 @@
 
 CALLER_BEGIN
 
-class SocketHandler
+class CALLER_DLL_EXPORT SocketHandler
 {
 public:
     enum ConnectivityState {

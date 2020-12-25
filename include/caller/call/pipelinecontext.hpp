@@ -9,7 +9,7 @@
 
 CALLER_BEGIN
 
-class PipelineContext
+class CALLER_DLL_EXPORT PipelineContext
 {
 public:
     PipelineContext();

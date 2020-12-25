@@ -11,7 +11,7 @@ public:
     ~ThreadExecutionContext();
 
 public:
-    static ExecutionContext *executionContext();
+    static inline ExecutionContext *executionContext() { return _M_Current; }
 
 protected:
     static void setExecutionContext(ExecutionContext *context);

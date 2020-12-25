@@ -9,7 +9,7 @@
 
 CALLER_BEGIN
 
-class Pipeline
+class CALLER_DLL_EXPORT Pipeline
 {
     typedef std::vector<PipelineStagePtr> PipelineStageSet;
 public:

@@ -1,6 +1,5 @@
 #include <caller/route/simplerouter.hpp>
 #include <caller/route/route.hpp>
-//#include <caller/call/response.hpp>
 #include <iostream>
 
 
@@ -16,28 +15,27 @@ SimpleRouter::~SimpleRouter()
 
 }
 
-void SimpleRouter::post(ResponsePtr resp)
+void SimpleRouter::post(const EventPtr &event)
 {
-//    Routes routes;
+    Routes routes;
 
-//    {
-//        std::unique_lock<std::mutex> locker(_M_Mutex);
+    {
+        std::unique_lock<std::mutex> locker(_M_Mutex);
 
-//        ID id       = resp->id();
-//        ID group    = _M_GroupMask & resp->id();
-//        auto range  = _M_RouterList.equal_range(group);
-//        while (range.first != range.second) {
-//            auto route = range.first->second;
-//            if (route != nullptr && route->match(id)) {
-//                routes.push_back(route);
-//            }
-//            range.first++;
-//        }
-//    }
+        ID group    = _M_GroupMask & event->id();
+        auto range  = _M_RouterList.equal_range(group);
+        while (range.first != range.second) {
+            auto route = range.first->second;
+            if (route != nullptr && route->match(event)) {
+                routes.push_back(route);
+            }
+            range.first++;
+        }
+    }
 
-//    for (auto route : routes) {
-//        route->post(resp);
-//    }
+    for (auto route : routes) {
+        route->post(event);
+    }
 }
 
 bool SimpleRouter::add(RoutePtr route)

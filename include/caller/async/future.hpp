@@ -49,6 +49,7 @@ inline Future<T>& Future<T>::whenCanceled(CanceledCallback cb, CancelFunc *cance
 template<typename T>
 inline Future<T>& Future<T>::whenFinished(ExecutionContext* context, FinishedCallback cb, CancelFunc *cancel) {
     Future<T> self = *this;
+
     auto cancelFunc = m_interface.listen([self, cb, context](int state) {
         if (state == FutureInterfaceBase::Finished) {
             Executor* executor = nullptr;
@@ -76,7 +77,7 @@ inline Future<T>& Future<T>::whenCanceled(ExecutionContext* context, CanceledCal
     auto cancelFunc = m_interface.listen([self, cb, context](int state) {
         if (state == FutureInterfaceBase::Canceled) {
             Executor* executor = nullptr;
-            if (context != nullptr && (executor = context->executor()) != nullptr) {
+            if (context != nullptr && (executor = context->executor()) != nullptr ) {
                 auto errcode   = self.m_interface.errorCode();
                 auto exception = self.m_interface.exception();
                 executor->execute([errcode, exception, cb]() {

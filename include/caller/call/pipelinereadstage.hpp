@@ -4,7 +4,7 @@
 
 CALLER_BEGIN
 
-class PipelineReadStage : public PipelineStage
+class CALLER_DLL_EXPORT PipelineReadStage : public PipelineStage
 {
 public:
     PipelineReadStage();
@@ -34,7 +34,7 @@ protected:
 };
 
 template<typename T>
-class PipelineTypedReadStage<T*> : public PipelineReadStage {
+class CALLER_DLL_EXPORT PipelineTypedReadStage<T*> : public PipelineReadStage {
 public:
     PipelineTypedReadStage() = default;
     virtual ~PipelineTypedReadStage() override = default;

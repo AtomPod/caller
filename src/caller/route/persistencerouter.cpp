@@ -1,6 +1,4 @@
 #include <caller/route/persistencerouter.hpp>
-//#include <caller/call/response.hpp>
-#include <caller/message/message.hpp>
 
 CALLER_BEGIN
 
@@ -14,22 +12,19 @@ PersistenceRouter::~PersistenceRouter()
 
 }
 
-void PersistenceRouter::post(ResponsePtr resp)
+void PersistenceRouter::post(const EventPtr &e)
 {
-//    MessagePtr message = resp->rawMessage();
-//    if (message == nullptr)
-//        return;
-//    ID id = message->id();
-
-//    for (auto route : _M_Routes) {
-//        if (route->match(id)) {
-//            route->post(resp);
-//        }
-//    }
+    Locker locker(_M_Mutex);
+    for (auto route : _M_Routes) {
+        if (route->match(e)) {
+            route->post(e);
+        }
+    }
 }
 
 bool PersistenceRouter::add(RoutePtr route)
 {
+    Locker locker(_M_Mutex);
     auto where = std::find(_M_Routes.begin(), _M_Routes.end(), route);
     if (where != _M_Routes.end()) {
         return false;
@@ -41,6 +36,7 @@ bool PersistenceRouter::add(RoutePtr route)
 
 void PersistenceRouter::remove(RoutePtr route)
 {
+    Locker locker(_M_Mutex);
     UNUSED(std::remove(_M_Routes.begin(), _M_Routes.end(), route));
 }
 

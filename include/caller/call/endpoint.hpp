@@ -5,7 +5,7 @@
 
 CALLER_BEGIN
 
-class Endpoint
+class CALLER_DLL_EXPORT Endpoint
 {
 public:
     Endpoint();

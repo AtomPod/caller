@@ -1,16 +1,18 @@
 #ifndef CALLER_ROUTE_DECLARE_HPP
 #define CALLER_ROUTE_DECLARE_HPP
-#include <memory>
-#include <caller/core.hpp>
+#include <caller/common/refptr.hpp>
 
 CALLER_BEGIN
 
 class Route;
-typedef std::shared_ptr<Route> RoutePtr;
-typedef std::weak_ptr<Route>   RouteWeakPtr;
+typedef RefPtr<Route>       RoutePtr;
+typedef WeakRefPtr<Route>   RouteWeakPtr;
 
 class Router;
-typedef std::shared_ptr<Router> RouterPtr;
+typedef RefPtr<Router>      RouterPtr;
+
+class Event;
+typedef RefPtr<Event>       EventPtr;
 
 CALLER_END
 

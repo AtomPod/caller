@@ -10,7 +10,7 @@ CALLER_BEGIN
  * @brief The BroadcastRouter class 【非线程安全】广播型路由，不进行匹配，
  * 均进行执行
  */
-class BroadcastRouter : public Router
+class CALLER_DLL_EXPORT BroadcastRouter : public Router
 {
     typedef std::list<RoutePtr> RouteList;
 public:
@@ -18,7 +18,7 @@ public:
     virtual ~BroadcastRouter() override;
 
 public:
-    virtual void     post(ResponsePtr resp)       override;
+    virtual void     post(const EventPtr &event)  override;
     virtual bool     add(RoutePtr route)          override;
     virtual void     remove(RoutePtr route)       override;
 

@@ -9,12 +9,12 @@ CALLER_BEGIN
 class CALLER_DLL_EXPORT RouteFunc : public Route
 {
 public:
-    typedef std::function<void(RequestPtr,ResponsePtr)> Handler;
+    typedef std::function<void(const EventPtr &)> Handler;
 public:
     RouteFunc(const Handler &handler);
-    RouteFunc(const ID &id, const Handler &handler);
+    RouteFunc(const ID &id, const Route::ID &sequence, const Handler &handler);
     RouteFunc(Handler &&handler);
-    RouteFunc(const ID &id, Handler &&handler);
+    RouteFunc(const ID &id, const Route::ID &sequence, Handler &&handler);
     virtual ~RouteFunc();
 
 public:
@@ -22,14 +22,14 @@ public:
     void setHandler(const Handler &handler);
 
 protected:
-    virtual void post(ResponsePtr resp);
+    virtual void post(const EventPtr &event);
 
 private:
     Handler _M_Handler;
 };
 
-RoutePtr routeFromFunc(const Route::ID &id, const RouteFunc::Handler &h);
-RoutePtr routeFromFunc(const Route::ID &id,  RouteFunc::Handler &&h);
+RoutePtr RouteFromFunc(const Route::ID &id,  const Route::ID &sequence, const RouteFunc::Handler &h);
+RoutePtr RouteFromFunc(const Route::ID &id,  const Route::ID &sequence, RouteFunc::Handler &&h);
 CALLER_END
 
 #endif // ROUTEFUNC_HPP

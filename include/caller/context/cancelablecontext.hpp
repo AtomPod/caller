@@ -1,6 +1,7 @@
 #ifndef CALLER_CANCELABLECONTEXT_HPP
 #define CALLER_CANCELABLECONTEXT_HPP
 #include <caller/context/context.hpp>
+#include <caller/common/refptr.hpp>
 #include <mutex>
 #include <set>
 
@@ -12,7 +13,7 @@ class CALLER_DLL_EXPORT CancelableContext : public ContextBase
     friend class ContextBase;
 
     template<typename T>
-    friend class ::std::shared_ptr;
+    friend class std::shared_ptr;
 
     typedef ::std::set<ContextPtr>  Childrens;
 public:

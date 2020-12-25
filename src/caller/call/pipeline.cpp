@@ -5,7 +5,7 @@ CALLER_BEGIN
 
 PipelinePtr Pipeline::make(PipelineStagePtr last)
 {
-    return std::make_shared<Pipeline>(last);
+    return NewRefPtr<Pipeline>(last);
 }
 
 Pipeline::Pipeline(PipelineStagePtr last) : _M_LastStage(last)

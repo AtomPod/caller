@@ -53,7 +53,7 @@ public:
 
 class CALLER_DLL_EXPORT ContextBase : public Context
 {
-    typedef std::shared_ptr<ContextBase>    ContextBasePtr;
+    typedef RefPtr<ContextBase>    ContextBasePtr;
     typedef std::unordered_set<ContextPtr>  ChildrenSet;
     friend class Context;
 public:

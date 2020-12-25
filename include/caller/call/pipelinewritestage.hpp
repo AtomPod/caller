@@ -4,7 +4,7 @@
 
 CALLER_BEGIN
 
-class PipelineWriteStage : public PipelineStage
+class CALLER_DLL_EXPORT PipelineWriteStage : public PipelineStage
 {
 public:
     PipelineWriteStage();
@@ -20,7 +20,7 @@ protected:
 };
 
 template<typename T>
-class PipelineTypedWriteStage : public PipelineWriteStage
+class CALLER_DLL_EXPORT PipelineTypedWriteStage : public PipelineWriteStage
 {
 public:
     PipelineTypedWriteStage() = default;
@@ -35,7 +35,7 @@ protected:
 };
 
 template<typename T>
-class PipelineTypedWriteStage<T*> : public PipelineWriteStage {
+class CALLER_DLL_EXPORT PipelineTypedWriteStage<T*> : public PipelineWriteStage {
 public:
     PipelineTypedWriteStage() = default;
     virtual ~PipelineTypedWriteStage() override = default;

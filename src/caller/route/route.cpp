@@ -3,9 +3,7 @@
 
 CALLER_BEGIN
 
-const Context::KeyType Route::MetaTag = "caller-route-meta-key";
-
-Route::Route() : _M_ID(0), _M_Mask(UINT64_MAX), _M_Type(TEMPORARY)
+Route::Route() : _M_ID(0), _M_IDMask(UINT64_MAX), _M_SequenceNumber(0), _M_SequenceNumberMask(UINT64_MAX)
 {
 
 }
@@ -19,39 +17,40 @@ void Route::setID(const ID &id)
     _M_ID = id;
 }
 
-Route::Type Route::type() const
+bool Route::match(const EventPtr &event) const
 {
-    return _M_Type;
+    return ((this->_M_ID & idMask()) == (event->id() & idMask())) &&
+            ((event->sequenceNumber() & sequenceNumberMask()) == (sequenceNumber() & sequenceNumberMask()));
 }
 
-void Route::setType(const Type &type)
+ID Route::idMask() const
 {
-    _M_Type = type;
+    return _M_IDMask;
 }
 
-bool Route::match(const Route::ID &id) const
+void Route::setIDMask(const ID &idMask)
 {
-    return (this->_M_ID & mask()) == (id & mask());
+    _M_IDMask = idMask;
 }
 
-RequestPtr Route::request() const
+ID Route::sequenceNumber() const
 {
-    return _M_Request;
+    return _M_SequenceNumber;
 }
 
-void Route::setRequest(const RequestPtr &request)
+void Route::setSequenceNumber(const ID &sequenceNumber)
 {
-    _M_Request = request;
+    _M_SequenceNumber = sequenceNumber;
 }
 
-Route::ID Route::mask() const
+Route::ID Route::sequenceNumberMask() const
 {
-    return _M_Mask;
+    return _M_SequenceNumberMask;
 }
 
-void Route::setMask(const ID &mask)
+void Route::setSequenceNumberMask(const ID &mask)
 {
-    _M_Mask = mask;
+    _M_SequenceNumberMask = mask;
 }
 
 Route::~Route()

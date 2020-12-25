@@ -10,6 +10,7 @@ CALLER_BEGIN
 class CALLER_DLL_EXPORT SimpleRouter : public Router
 {
 private:
+    typedef std::list<RoutePtr>							 Routes;
     typedef std::unordered_multimap<Route::ID, RoutePtr> RouterList;
     typedef RouterList::iterator                         Iterator;
     typedef RouterList::const_iterator                   ConstIterator;
@@ -17,7 +18,7 @@ public:
     SimpleRouter(ID groupMask = 0xFFFFFFFF);
     virtual ~SimpleRouter() override;
 public:
-    virtual void     post(ResponsePtr resp)       override;
+    virtual void     post(const EventPtr &event)  override;
     virtual bool     add(RoutePtr route)          override;
     virtual void     remove(RoutePtr route)       override;
 private:

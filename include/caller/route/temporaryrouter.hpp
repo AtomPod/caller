@@ -9,14 +9,14 @@ CALLER_BEGIN
 /**
  * @brief The TemporaryRouter class 【非线程安全】储存临时路由，匹配一次后就失效
  */
-class TemporaryRouter : public Router
+class CALLER_DLL_EXPORT TemporaryRouter : public Router
 {
     typedef std::list<RoutePtr> RouteList;
 public:
     TemporaryRouter();
     virtual ~TemporaryRouter() override;
 public:
-    virtual void     post(ResponsePtr resp)       override;
+    virtual void     post(const EventPtr &event)    override;
 
     /**
      * @brief add    添加路由到列表中

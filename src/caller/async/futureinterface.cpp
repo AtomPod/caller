@@ -4,7 +4,7 @@
 CALLER_BEGIN
 
 FutureInterfaceBase::FutureInterfaceBase(size_t storeSpace)
-    : _M_Ptr(std::make_shared<FutureInterfaceBaseImpl>(storeSpace)) {
+    : _M_Ptr(NewRefPtr<FutureInterfaceBaseImpl>(storeSpace)) {
 
 }
 

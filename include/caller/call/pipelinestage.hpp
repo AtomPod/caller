@@ -10,13 +10,13 @@
 
 CALLER_BEGIN
 
-class PipelineStage : public std::enable_shared_from_this<PipelineStage>
+class CALLER_DLL_EXPORT PipelineStage : public std::enable_shared_from_this<PipelineStage>
 {
     friend class Pipeline;
 public:
     template<typename T, typename... Args>
     static PipelineStagePtr create(Args&& ...args) {
-        return std::make_shared<T>(std::forward<Args>(args)...);
+        return NewRefPtr<T>(std::forward<Args>(args)...);
     }
 public:
     PipelineStage() = default;

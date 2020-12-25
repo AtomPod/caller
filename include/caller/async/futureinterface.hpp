@@ -1,10 +1,11 @@
 #ifndef CALLER_FUTUREINTERFACE_HPP
 #define CALLER_FUTUREINTERFACE_HPP
 #include <caller/core.hpp>
+#include <caller/common/refptr.hpp>
 #include <sigslot/signal.hpp>
 #include <mutex>
-#include <memory>
 #include <functional>
+#include <iostream>
 
 CALLER_BEGIN
 
@@ -12,7 +13,7 @@ class FutureInterfaceBaseImpl;
 class FutureInterfaceBase
 {
     friend class FutureInterfaceBaseImpl;
-    typedef std::shared_ptr<FutureInterfaceBaseImpl> PrivatePtr;
+    typedef RefPtr<FutureInterfaceBaseImpl> PrivatePtr;
 public:
     enum class WaitStatus {
       Success,

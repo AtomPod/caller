@@ -7,7 +7,6 @@
 CALLER_BEGIN
 
 ByteBuffer::FreeHandler ByteBuffer::newFreeHandler = [](char *data, size_t size) {
-    std::cout << "new free handler\n";
     (void)size;
     delete[] data;
 };
@@ -159,13 +158,13 @@ bool ByteBufferImpl::writeData(const void *data, size_t size)
     return true;
 }
 
-ByteBuffer::ByteBuffer(size_t size) : _M_Impl(std::make_shared<ByteBufferImpl>(size))
+ByteBuffer::ByteBuffer(size_t size) : _M_Impl(NewRefPtr<ByteBufferImpl>(size))
 {
 
 }
 
 ByteBuffer::ByteBuffer(char *data, size_t size, ByteBuffer::FreeHandler handler) :
-    _M_Impl(std::make_shared<ByteBufferImpl>(data, size, handler))
+    _M_Impl(NewRefPtr<ByteBufferImpl>(data, size, handler))
 {
 
 }

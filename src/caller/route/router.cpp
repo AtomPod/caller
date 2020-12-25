@@ -3,7 +3,6 @@
 
 CALLER_BEGIN
 
-const Context::KeyType Router::MetaTag = "caller-router-meta-key";
 
 Router::Router()
 {
@@ -15,14 +14,15 @@ Router::~Router()
 
 }
 
-void Router::post(ResponsePtr resp)
+bool Router::match(const EventPtr &event) const
 {
-    UNUSED(resp);
+    UNUSED(event);
+    return true;
 }
 
-RouterPtr Router::make(ID groupMask)
+void Router::post(const EventPtr &event)
 {
-    return std::make_shared<SimpleRouter>(groupMask);
+    UNUSED(event);
 }
 
 CALLER_END

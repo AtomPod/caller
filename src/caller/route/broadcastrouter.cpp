@@ -12,10 +12,10 @@ BroadcastRouter::~BroadcastRouter()
 
 }
 
-void BroadcastRouter::post(ResponsePtr resp)
+void BroadcastRouter::post(const EventPtr &event)
 {
     for (auto route : _M_Routes) {
-        route->post(resp);
+        route->post(event);
     }
 }
 

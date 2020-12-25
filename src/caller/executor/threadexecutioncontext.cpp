@@ -38,11 +38,6 @@ ThreadExecutionContext::~ThreadExecutionContext()
     setExecutionContext(_M_Prev);
 }
 
-ExecutionContext *ThreadExecutionContext::executionContext()
-{
-    return _M_Current;
-}
-
 void ThreadExecutionContext::setExecutionContext(ExecutionContext *context)
 {
     _M_Current = context;

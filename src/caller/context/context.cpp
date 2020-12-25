@@ -97,13 +97,13 @@ void ContextBase::setParent(const ContextPtr &parent)
 ContextPtr Context::backgroundContext()
 {
     static ContextBase::ContextBasePtr  background =
-            std::make_shared<ContextBase>();
+            NewRefPtr<ContextBase>();
     return background;
 }
 
 ContextPtr Context::withValue(ContextPtr parent, const Context::KeyType &key, const Context::ValueType &value)
 {
-    auto valueContext = std::make_shared<ValueContext>(key, value);
+    auto valueContext = NewRefPtr<ValueContext>(key, value);
     valueContext->setParent(parent);
     return std::move(valueContext);
 }
@@ -111,7 +111,7 @@ ContextPtr Context::withValue(ContextPtr parent, const Context::KeyType &key, co
 Context::ContextCancelPair Context::withCancel(ContextPtr parent)
 {
     assert(parent != nullptr);
-    auto cancelableContext = std::make_shared<CancelableContext>();
+    auto cancelableContext = NewRefPtr<CancelableContext>();
     cancelableContext->setParent(parent);
     return ContextCancelPair({
         cancelableContext,

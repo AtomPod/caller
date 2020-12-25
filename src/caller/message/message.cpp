@@ -2,8 +2,6 @@
 
 CALLER_BEGIN
 
-const Context::KeyType Message::MetaTag = "caller-message-meta-key";
-
 Message::Message()
 {
 

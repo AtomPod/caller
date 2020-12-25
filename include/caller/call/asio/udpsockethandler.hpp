@@ -1,23 +1,26 @@
-#ifndef CALLER_ASIO_TCP_SOCKETHANDLER_HPP
-#define CALLER_ASIO_TCP_SOCKETHANDLER_HPP
+#ifndef CALLER_ASIO_UDPSOCKETHANDLER_HPP
+#define CALLER_ASIO_UDPSOCKETHANDLER_HPP
+
 #include <caller/call/sockethandler.hpp>
 #include <caller/executor/asio/asioexecutor.hpp>
+#include <caller/call/pipelinecontext.hpp>
+#include <caller/call/pipeline.hpp>
 #include <atomic>
 #include <list>
 
 CALLER_BEGIN
 
-class AsioTcpSocketHandler : public SocketHandler
+class AsioUdpSocketHandler : public SocketHandler
 {
     friend class AsioTcpPipelineContext;
-    typedef ::asio::ip::tcp                 Protocol;
-    typedef ::asio::ip::tcp::socket         Socket;
-    typedef ::asio::ip::tcp::resolver       EndpointResolver;
+    typedef ::asio::ip::udp                 Protocol;
+    typedef ::asio::ip::udp::socket         Socket;
+    typedef ::asio::ip::udp::resolver       EndpointResolver;
     typedef EndpointResolver::endpoint_type AsioEndpoint;
     typedef std::list<AsioEndpoint>         EndpointList;
 public:
-    AsioTcpSocketHandler(AsioExecutionContext &context);
-    virtual ~AsioTcpSocketHandler() override;
+    AsioUdpSocketHandler(AsioExecutionContext &context);
+    virtual ~AsioUdpSocketHandler() override;
 public:
     virtual Future<void>        bind(const Endpoint &endpoint)      override;
     virtual Future<void>        connect(const Endpoint &endpoint)   override;
@@ -44,4 +47,4 @@ private:
 
 CALLER_END
 
-#endif // SOCKETHANDLER_HPP
+#endif // UDPSOCKETHANDLER_HPP

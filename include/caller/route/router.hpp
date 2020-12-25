@@ -9,23 +9,20 @@
 
 CALLER_BEGIN
 
-class CALLER_DLL_EXPORT Router : public Route
-{
+class CALLER_DLL_EXPORT Router : public Route {
 public:
-    typedef std::list<RoutePtr> Routes;
-public:
-    static const Context::KeyType   MetaTag;
-public:
-    static RouterPtr make(ID groupMask = 0xFFFFFFFF);
-public:
-    typedef std::function<bool(RoutePtr)> RouteCallback;
+    template<typename T, typename... Args>
+    static RouterPtr create(Args&& ...args) {
+        return NewRefPtr<T>(std::forward<Args>(args)...);
+    }
 public:
     Router();
     virtual ~Router() override;
 public:
-    virtual void     post(ResponsePtr resp)       override;
-    virtual bool     add(RoutePtr route)                = 0;
-    virtual void     remove(RoutePtr route)             = 0;
+    virtual bool     match(const EventPtr &event)  const    override;
+    virtual void     post(const EventPtr &event)            override;
+    virtual bool     add(RoutePtr route)                    = 0;
+    virtual void     remove(RoutePtr route)                 = 0;
 };
 
 CALLER_END

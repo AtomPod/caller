@@ -6,18 +6,12 @@
 #include <caller/common/id.hpp>
 #include <caller/call/declare.hpp>
 #include <caller/context/context.hpp>
+#include <caller/route/event.hpp>
 
 CALLER_BEGIN
 
-class CALLER_DLL_EXPORT Route
+class CALLER_DLL_EXPORT Route : public std::enable_shared_from_this<Route>
 {
-public:
-    static const Context::KeyType MetaTag;
-public:
-    enum Type {
-      TEMPORARY,
-      PERSISTENCE
-    };
 public:
     typedef CALLER ID  ID;
 public:
@@ -25,25 +19,30 @@ public:
     virtual ~Route();
 
 public:
+    // 对应匹配的ID（事件ID）
     ID   id() const;
     void setID(const ID &id);
 
-    Type type() const;
-    void setType(const Type &type);
+    // ID 掩码，用于匹配使用，默认为全匹配
+    ID idMask() const;
+    void setIDMask(const ID &idMask);
 
-    ID mask() const;
-    void setMask(const ID &mask);
+    // 序号
+    ID sequenceNumber() const;
+    void setSequenceNumber(const ID &sequenceNumber);
+
+    // 序号掩码，用于匹配时使用，默认为全匹配
+    ID sequenceNumberMask() const;
+    void setSequenceNumberMask(const ID &sequenceNumberMask);
 public:
-    virtual bool match(const ID &id) const;
-    virtual void post(ResponsePtr resp) = 0;
+    virtual bool match(const EventPtr &event) const;
+    virtual void post(const EventPtr &event) = 0;
 
-    RequestPtr  request() const;
-    void        setRequest(const RequestPtr &request);
 private:
     ID                  _M_ID;
-    ID                  _M_Mask;
-    Type                _M_Type;
-    RequestPtr          _M_Request;
+    ID                  _M_IDMask;
+    ID                  _M_SequenceNumber;
+    ID                  _M_SequenceNumberMask;
 };
 
 

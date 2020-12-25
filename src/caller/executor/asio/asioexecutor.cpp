@@ -15,7 +15,7 @@ void AsioExecutor::execute(Task task) {
     if (task == nullptr)
         return;
 
-    _M_Context.rawContext().post(task);
+    ::asio::dispatch(_M_Context.rawContext(), std::move(task));
 }
 
 AsioExecutor::CancelFunc AsioExecutor::execute(Executor::Task task, const std::chrono::steady_clock::duration &expiry)

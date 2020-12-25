@@ -5,7 +5,20 @@
 #include <caller/call/pipelinereadstage.hpp>
 #include <caller/call/pipeline.hpp>
 #include <caller/call/asio/tcpsockethandler.hpp>
+#include <caller/call/socketpipelinecontext.hpp>
+#include <caller/call/asio/udpsockethandler.hpp>
+#include <caller/common/ringbuffer.hpp>
+#include <caller/common/endian.hpp>
+#include <caller/call/pipelinestage/delimiterbasedframedecoder.hpp>
+#include <caller/call/pipelinestage/delimiterbasedframeencoder.hpp>
 #include <string>
+#include <caller/route/broadcastrouter.hpp>
+#include <caller/route/event.hpp>
+#include <caller/route/routefunc.hpp>
+#include <caller/route/temporaryrouter.hpp>
+#include <caller/message/messagefactory.hpp>
+#include <caller/route/persistencerouter.hpp>
+#include <caller/executor/singlethreadexecution.hpp>
 
 using namespace std;
 
@@ -34,10 +47,22 @@ protected:
 
     virtual void pipelineInactive(PipelineContextPtr context) {
         std::cout << "disconnected\n";
+
+        CALLER Endpoint endpoint;
+        endpoint.setHost("www.baid.com");
+        endpoint.setPort("80");
+        context->connect(endpoint).whenCanceled([](const std::error_code &ec, const std::exception_ptr &e) {
+            std::cout << "connect:" << ec.message() << std::endl;
+        }).whenFinished([]() {
+            std::cout << "finished: connected\n";
+        });
     }
 
     virtual void pipelineReadComplete(PipelineContextPtr ctx)   {
         std::cout << "read complete\n";
+        ctx->disconnect().whenCanceled([](const std::error_code &ec, const std::exception_ptr &e) {
+            std::cout << "disconnected: " << ec.message() << std::endl;
+        });
     }
 
     virtual void pipelineWriteComplete(PipelineContextPtr)   {
@@ -60,22 +85,186 @@ protected:
 
 };
 
+struct Message {
+    uint16_t pif;
+    uint16_t length;
+    uint16_t mid;
+    uint16_t eif;
+};
+
+class MessageDelimiterBaseFrameEncoder : public DelimiterBasedFrameEncoder<::Message*>
+{
+public:
+    MessageDelimiterBaseFrameEncoder() {
+
+    }
+public:
+    virtual bool encode(PipelineContextPtr context, ::Message* object , ByteBuffer &pack) override {
+        pack.put(object->pif);
+        pack.put(object->length);
+        pack.put(object->mid);
+        pack.put(object->eif);
+        std::cout << "size: " << pack.length() << '\n';
+        return true;
+    }
+};
+
+class Empty : public PipelineWriteStage
+{
+public:
+    Empty() {}
+
+    virtual void pipelineActive(PipelineContextPtr ctx) {
+        std::cout << "connected\n";
+
+        ::Message* msg = new ::Message();
+        msg->pif = 0x1412;
+        msg->eif = 0x1212;
+        msg->length = sizeof(::Message);
+        msg->mid    = 0x12;
+
+        ctx->write(msg, ByteBuffer());
+    }
+
+    void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object) {
+        if (auto next = nextStage(); next != nullptr) {
+            next->handleWrite(context, buffer, object);
+        }
+    }
+};
+
+class MessageDelimiterBaseFrameDecoder : public DelimiterBasedFrameDecoder<uint16_t, uint16_t>
+{
+public:
+    MessageDelimiterBaseFrameDecoder() : DelimiterBasedFrameDecoder(6, 2, 0x1412, 0x1212, 4096) {
+
+    }
+
+protected:
+    virtual any decode(PipelineContextPtr context,  ByteBuffer pack) {
+        ::Message* newMsg = new ::Message();
+        pack.take(newMsg->pif, 0);
+        pack.take(newMsg->length, 2);
+        pack.take(newMsg->mid, 4);
+        pack.take(newMsg->eif, 6);
+        return newMsg;
+    }
+};
+
+
+class MessagePrinter : public PipelineTypedReadStage<::Message*>
+{
+public:
+    void handleTypedRead(PipelineContextPtr context, ByteBuffer buffer, ::Message *object) {
+        std::cout << "message: " << object->mid << '\n';
+    }
+};
+
+class OldMessage : public CALLER Message {
+public:
+    static  ID        messageId() {
+        return 0x12;
+    }
+
+    virtual ID          id() const  {
+        return messageId();
+    }
+
+    virtual     Error   serialize(ByteBuffer buffer)   const  {
+        return Error();
+    }
+
+    virtual     Error   deserialize(ByteBuffer buffer)  {
+        return Error();
+    }
+};
+
+void printRange(std::chrono::steady_clock::time_point start, std::chrono::steady_clock::time_point end) {
+    printf("time start: %llu, time end: %llu, dt: %llu\n", start.time_since_epoch().count(),
+              end.time_since_epoch().count(), (end - start).count());
+}
+
 int main()
 {
+#if 1
+
+
     CALLER AsioExecutionContext executionContext;
     CALLER ThreadExecutionContext tec(executionContext);
+//    CALLER CoreSingleThreadExecutor singleExecutor;
 
-    CALLER AsioTcpSocketHandler* socketHandler = new CALLER AsioTcpSocketHandler(executionContext);
-    CALLER PipelineContextPtr pipelineContext = CALLER AsioTcpPipelineContext::make(socketHandler);
+//    CALLER MessageFactoryPtr factory = CALLER MessageFactory::make();
+//    factory->registerMessageMeta(CALLER MessageMeta::create<OldMessage>());
+
+//    MessageMeta *meta = factory->messageMetaById(0x12);
+
+//    CALLER MessagePtr _0x12Msg = factory->messageById(0x12);
+
+//    RefPtr<OldMessage> _T0x12Msg = StaticCastRefPtr<OldMessage>(_0x12Msg);
+
+//    std::cout << meta->type()->name() << "," << _T0x12Msg->id() << '\n';
+
+//    return 0;
+
+    CALLER RouterPtr brouter = CALLER Router::create<BroadcastRouter>();
+    CALLER RouterPtr router  = CALLER Router::create<PersistenceRouter>();
+    CALLER RouterPtr trouter = CALLER Router::create<TemporaryRouter>();
+
+    brouter->add(trouter);
+    brouter->add(router);
+
+    auto route2 = NewRefPtr<RouteFunc>([](const EventPtr &e) {
+        std::cout << "route2: " << e->id() << '\n';
+    });
+
+    route2->setID(0);
+    route2->setIDMask(0);
+    route2->setSequenceNumberMask(0);
+    trouter->add(route2);
+
+
+    auto route = NewRefPtr<RouteFunc>([](const EventPtr &e) {
+        std::cout << "route1: " << e->id() << '\n';
+    });
+
+    route->setID(0x10);
+    route->setIDMask(0x10);
+    route->setSequenceNumberMask(0);
+    router->add(route);
+
+    ::Message* msg = new ::Message();
+    msg->pif = 0x1412;
+    msg->eif = 0x1212;
+    msg->length = sizeof(::Message);
+    msg->mid    = 0x12;
+
+    brouter->post(CALLER Event::make(msg->mid, 1, msg, CALLER Error(MakeError(CALLER GenericError::timed_out))));
+    brouter->post(CALLER Event::make(msg->mid, 0, msg, CALLER Error()));
+
+    return 0;
+
+
+    CALLER AsioUdpSocketHandler* socketHandler = new CALLER AsioUdpSocketHandler(executionContext);
+    CALLER PipelineContextPtr pipelineContext = CALLER SocketPipelineContext::make(socketHandler);
+    pipelineContext->readPipeline()->append(CALLER CreateStreamReadStage(4096));
 
     auto rpipe = pipelineContext->readPipeline();
-    rpipe->append(PipelineStage::create<TestReadPipeline>());
+    rpipe->append(PipelineStage::create<MessageDelimiterBaseFrameDecoder>());
+    rpipe->append(PipelineStage::create<MessagePrinter>());
+
+    auto wpipe = pipelineContext->writePipeline();
+    wpipe->append(PipelineStage::create<MessageDelimiterBaseFrameEncoder>());
+    wpipe->append(PipelineStage::create<Empty>());
 
     CALLER Endpoint endpoint;
-    endpoint.setHost("www.baid.com");
-    endpoint.setPort("80");
+    endpoint.setHost("127.0.0.1");
+    endpoint.setPort("9096");
 
-    pipelineContext->connect(endpoint);
+    pipelineContext->connect(endpoint).whenCanceled([](const std::error_code &ec,
+                                                    const std::exception_ptr &e) {
+        std::cout << "Failed to connect to udp server: " << ec.message() << '\n';
+    });
     executionContext.start();
+#endif
     return 0;
 }

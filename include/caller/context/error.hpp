@@ -26,12 +26,12 @@ public:
     }
 };
 
-static ContextErrorCategory& getContextErrorCategory() {
+inline ContextErrorCategory& getContextErrorCategory() {
     static ContextErrorCategory category;
     return category;
 }
 
-static std::error_code makeContextError(ContextError e) {
+inline std::error_code makeContextError(ContextError e) {
     return std::error_code(int(e), getContextErrorCategory());
 }
 

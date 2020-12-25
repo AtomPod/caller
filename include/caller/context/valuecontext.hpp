@@ -2,13 +2,14 @@
 #define CALLER_VALUECONTEXT_HPP
 #include <caller/context/context.hpp>
 #include <caller/context/declare.hpp>
+#include <caller/common/refptr.hpp>
 
 CALLER_BEGIN
 
 class ValueContext : public ContextBase
 {
     template<typename T>
-    friend class ::std::shared_ptr;
+    friend class std::shared_ptr;
 public:
     ValueContext(const KeyType &key, const ValueType &value);
 public:
