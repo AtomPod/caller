@@ -10,10 +10,11 @@ CALLER_BEGIN
 
 class FutureInterfaceBaseImpl : public std::enable_shared_from_this<FutureInterfaceBaseImpl>
 {
-    typedef std::list<FutureInterfaceBase::CallOut> Signal;
+    typedef std::list<RefPtr<FutureEventListener>> Signal;
 public:
-    typedef unsigned char    StorageElement;
-    typedef StorageElement*  Storage;
+//    typedef unsigned char    StorageElement;
+    typedef FutureEvent::StorageElement  StorageElement;
+    typedef FutureEvent::Storage         Storage;
 public:
     typedef std::mutex Mutex;
     typedef std::unique_lock<Mutex> Locker;
@@ -26,10 +27,9 @@ public:
 
     bool switchStateTo(int which);
 
-    FutureInterfaceBase::CancelFunc
-         connectCallOut(const FutureInterfaceBase::CallOut &o);
-
-    void sendCallOut(int state, Locker *locker);
+    void addListener(RefPtr<FutureEventListener> listener);
+    void removeListener(RefPtr<FutureEventListener> listener);
+    void sendEvent(const FutureEvent &event, Locker *locker);
 
     mutable Mutex                               m_mutex;
     ConditionVar                                m_waitCondition;

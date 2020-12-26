@@ -1,6 +1,7 @@
 #include <caller/call/socketpipelinecontext.hpp>
 #include <caller/call/pipelinewritestage.hpp>
 #include <caller/call/pipelinereadstage.hpp>
+#include <caller/async/futureeventlistener.hpp>
 
 CALLER_BEGIN
 
@@ -67,19 +68,45 @@ public:
 
         FutureInterface<size_t> futureSender = _M_LastFuture;
         Future<size_t> future = _M_Handler->write(buffer);
-        future.whenFinished([context, futureSender](size_t size) mutable {
-            context->notifyWriteComplete();
-            futureSender.reportResult(size);
-        }).whenCanceled([context, futureSender](const std::error_code &ec, const std::exception_ptr &e) mutable {
-            UNUSED(ec);
-            UNUSED(e);
-            futureSender.reportErrorCode(ec);
-            if (ec != asio::error::not_connected &&
-                ec != asio::error::not_socket &&
-                ec != asio::error::bad_descriptor) {
-                context->notifyInactive();
-            }
-        });
+        future.addListener(CreateFutureEventListenerFunction(
+            [context, futureSender](const FutureEvent &e) mutable {
+
+                if (e.isFinished()) {
+                    context->notifyWriteComplete();
+                    size_t* result = e.resultPtr<size_t>();
+                    futureSender.reportResult(result != nullptr ? *result : 0);
+                } else {
+                    if (e.isError()) {
+                        Error ec = e.errorCode();
+
+                        futureSender.reportErrorCode(e.errorCode());
+
+                        if (ec != GenericError::not_connected &&
+                            ec != GenericError::not_a_socket &&
+                            ec != GenericError::bad_file_descriptor) {
+                            context->notifyInactive();
+                        }
+                    } else if (e.isException()) {
+                        futureSender.reportException(e.exceptionPtr());
+                    } else {
+                        futureSender.reportCanceled();
+                    }
+                }
+        }));
+
+//        future.whenFinished([context, futureSender](size_t size) mutable {
+//            context->notifyWriteComplete();
+//            futureSender.reportResult(size);
+//        }).whenCanceled([context, futureSender](const std::error_code &ec, const std::exception_ptr &e) mutable {
+//            UNUSED(ec);
+//            UNUSED(e);
+//            futureSender.reportErrorCode(ec);
+//            if (ec != asio::error::not_connected &&
+//                ec != asio::error::not_socket &&
+//                ec != asio::error::bad_descriptor) {
+//                context->notifyInactive();
+//            }
+//        });
     }
 
 public:
@@ -114,13 +141,15 @@ Future<void> SocketPipelineContext::connect(const Endpoint &endpoint)
     Future<void> future = _M_Handler->connect(endpoint);
 
     auto self = shared_from_this();
-    future.whenFinished(executor()->context(),[self]() {
-        try {
-            self->notifyActive();
-        } catch (const std::exception &e) {
-            self->notifyException(e);
+    future.addListener(CreateFutureEventListenerFunction([self](const FutureEvent &e) {
+        if (e.isFinished()) {
+            try {
+                self->notifyActive();
+            } catch (const std::exception &e) {
+                self->notifyException(e);
+            }
         }
-    });
+    }));
 
     return future;
 }
@@ -130,13 +159,15 @@ Future<void> SocketPipelineContext::disconnect()
     Future<void> future = _M_Handler->disconnect();
 
     auto self = shared_from_this();
-    future.whenFinished(executor()->context(), [self]() {
-        try {
-            self->notifyInactive();
-        } catch (const std::exception &e) {
-            self->notifyException(e);
+    future.addListener(CreateFutureEventListenerFunction([self](const FutureEvent &e) {
+        if (e.isFinished()) {
+            try {
+                self->notifyInactive();
+            } catch (const std::exception &e) {
+                self->notifyException(e);
+            }
         }
-    });
+    }));
 
     return future;
 }
@@ -151,25 +182,47 @@ Future<size_t> SocketPipelineContext::read(ByteBuffer buffer)
     Future<size_t> future = _M_Handler->read(buffer);
 
     auto self = shared_from_this();
-    future.whenFinished(executor()->context(), [self, buffer](size_t bytes) mutable {
-        buffer.resize(bytes);
+    future.addListener(CreateFutureEventListenerFunction([self, buffer](const FutureEvent &e) mutable {
+        if (e.isFinished()) {
+            size_t* bytes = e.resultPtr<size_t>();
+            buffer.resize(*bytes);
 
-        try {
-            self->_M_ReadPipeline->handleRead(self, buffer, any());
-        } catch (const std::exception &e) {
-            self->notifyException(e);
+            try {
+                self->_M_ReadPipeline->handleRead(self, buffer, any());
+            } catch (const std::exception &e) {
+                self->notifyException(e);
+            }
+        } else {
+            if (e.isError()) {
+                Error ec = e.errorCode();
+                if (ec != GenericError::not_connected &&
+                    ec != GenericError::not_a_socket &&
+                    ec != GenericError::bad_file_descriptor) {
+                    self->notifyInactive();
+                }
+            }
         }
+    }));
 
-    }).whenCanceled(executor()->context(), [self](const std::error_code &ec, const std::exception_ptr &e) {
-        UNUSED(ec);
-        UNUSED(e);
+//    future.whenFinished([self, buffer](size_t bytes) mutable {
+//        buffer.resize(bytes);
 
-        if (ec != asio::error::not_connected &&
-            ec != asio::error::not_socket &&
-            ec != asio::error::bad_descriptor) {
-            self->notifyInactive();
-        }
-    });
+//        try {
+//            self->_M_ReadPipeline->handleRead(self, buffer, any());
+//        } catch (const std::exception &e) {
+//            self->notifyException(e);
+//        }
+
+//    }).whenCanceled([self](const std::error_code &ec, const std::exception_ptr &e) {
+//        UNUSED(ec);
+//        UNUSED(e);
+
+//        if (ec != asio::error::not_connected &&
+//            ec != asio::error::not_socket &&
+//            ec != asio::error::bad_descriptor) {
+//            self->notifyInactive();
+//        }
+//    });
 
     return future;
 }

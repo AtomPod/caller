@@ -1,6 +1,7 @@
 #include <caller/context/context.hpp>
 #include <caller/context/cancelablecontext.hpp>
 #include <caller/context/valuecontext.hpp>
+#include <caller/async/futureeventlistener.hpp>
 #include <cassert>
 
 CALLER_BEGIN
@@ -78,20 +79,23 @@ void ContextBase::setParent(const ContextPtr &parent)
     parent->addChild(self);
 
     Channel pdone = parent->Done();
-    pdone.whenFinished([self](Error err) {
-        self->setError(err);
-    }, &_M_ParentChannelCancel);
 
-    Channel done = Done();
-    done.whenFinished([self, parent](Error err) {
-        UNUSED(err);
-        parent->removeChild(self);
-
-        auto cancel = self->_M_ParentChannelCancel;
-        if (cancel != nullptr) {
-            cancel();
+    _M_ParentChannelListener = CreateFutureEventListenerFunction([self](const FutureEvent &e) {
+        if (e.isFinished()) {
+            self->setError(*e.resultPtr<Error>());
         }
     });
+
+    pdone.addListener(_M_ParentChannelListener);
+
+    Channel done = Done();
+    done.addListener(CreateFutureEventListenerFunction([self, parent, pdone](const FutureEvent &e) mutable {
+        UNUSED(e);
+        parent->removeChild(self);
+
+        auto listener = self->_M_ParentChannelListener;
+        pdone.removeListener(listener);
+    }));
 }
 
 ContextPtr Context::backgroundContext()

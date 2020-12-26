@@ -9,13 +9,13 @@ FutureInterfaceBaseImpl::FutureInterfaceBaseImpl(size_t storeSize)
       m_storeData(nullptr)
 {
     if (storeSize > 0) {
-        m_storeData = new StorageElement[storeSize];
+        m_storeData = RefPtr<StorageElement>(new StorageElement[storeSize], [](StorageElement *p) { delete[] p; });
     }
 }
 
 FutureInterfaceBaseImpl::~FutureInterfaceBaseImpl()
 {
-    delete[] m_storeData;
+
 }
 
 bool FutureInterfaceBaseImpl::switchStateTo(int which) {
@@ -23,44 +23,45 @@ bool FutureInterfaceBaseImpl::switchStateTo(int which) {
     return m_state.compare_exchange_strong(exp, which, std::memory_order_acq_rel);
 }
 
-FutureInterfaceBase::CancelFunc FutureInterfaceBaseImpl::connectCallOut(const FutureInterfaceBase::CallOut &o)
+void FutureInterfaceBaseImpl::addListener(RefPtr<FutureEventListener> listener)
 {
-    if (o == nullptr)
-        return nullptr;
+    if (listener == nullptr)
+        return;
 
     Locker locker(m_mutex);
     if (m_state.load(std::memory_order_relaxed) & FutureInterfaceBase::Pending) {
-        m_signal.push_back(o);
-        auto result  = m_signal.back();
-        auto pointer = result.template target<void(*)(int)>();
-        auto _self   = shared_from_this();
-        return [pointer, _self]() {
-            Locker locker(_self->m_mutex);
-            for (auto beg = _self->m_signal.begin(); beg != _self->m_signal.end(); ++beg) {
-                auto& fn = *beg;
-                if (fn.template target<void(*)(int)>() == pointer) {
-                    _self->m_signal.erase(beg);
-                    return;
-                }
-            }
-        };
+        m_signal.push_back(listener);
+        return;
     }
 
     if (m_state.load(std::memory_order_relaxed) & FutureInterfaceBase::Canceled) {
         locker.unlock();
 
-        o(FutureInterfaceBase::Canceled);
+        FutureEvent e(FutureEvent::Canceled);
+        e.setErrorCode(m_errorCode);
+        e.setExceptionPtr(m_exceptionPtr);
+        listener->postEvent(e);
     }
 
     if (m_state.load(std::memory_order_relaxed) & FutureInterfaceBase::Finished) {
         locker.unlock();
 
-        o(FutureInterfaceBase::Finished);
+        FutureEvent e(FutureEvent::Finished);
+        e.setStorage(m_storeData);
+        listener->postEvent(e);
     }
-    return emptyCancelFunc;
 }
 
-void FutureInterfaceBaseImpl::sendCallOut(int state, Locker *locker)
+void FutureInterfaceBaseImpl::removeListener(RefPtr<FutureEventListener> listener)
+{
+    if (listener == nullptr)
+        return;
+
+    Locker locker(m_mutex);
+    m_signal.remove(listener);
+}
+
+void FutureInterfaceBaseImpl::sendEvent(const FutureEvent &event, Locker *locker)
 {
     Signal tempSignal;
     tempSignal.swap(m_signal);
@@ -69,8 +70,8 @@ void FutureInterfaceBaseImpl::sendCallOut(int state, Locker *locker)
         locker->unlock();
     }
 
-    for (auto fn : tempSignal) {
-        fn(state);
+    for (auto listener : tempSignal) {
+        listener->postEvent(event);
     }
 }
 
