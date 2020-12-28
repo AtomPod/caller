@@ -13,9 +13,9 @@ class CALLER_DLL_EXPORT Pipeline
 {
     typedef std::vector<PipelineStagePtr> PipelineStageSet;
 public:
-    static PipelinePtr make(PipelineStagePtr last);
+    static PipelinePtr make(PipelineStagePtr first,PipelineStagePtr last);
 public:
-    Pipeline(PipelineStagePtr last);
+    Pipeline(PipelineStagePtr first, PipelineStagePtr last);
     Pipeline(const Pipeline &) = delete;
     Pipeline(Pipeline &&) = delete;
     Pipeline& operator=(const Pipeline &) = delete;
@@ -32,6 +32,7 @@ public:
     void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object) ;
     void causeException(PipelineContextPtr context, const std::exception &e) ;
 private:
+    const PipelineStagePtr _M_FirstStage;
     const PipelineStagePtr _M_LastStage;
     PipelineStageSet       _M_Stages;
 };

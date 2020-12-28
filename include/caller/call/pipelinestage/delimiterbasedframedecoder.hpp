@@ -26,11 +26,6 @@ public:
 
         size_t totalWriteBytes = 0;
 
-        auto   next = nextStage();
-        if (next == nullptr) {
-            return;
-        }
-
         while (totalWriteBytes < buffer.length()) {
             size_t writeBytes = _M_RingBuffer.put(reinterpret_cast<RingBuffer::Element*>(buffer.data() + totalWriteBytes),
                                                   buffer.length() - totalWriteBytes);
@@ -39,7 +34,7 @@ public:
             while (unpack(_M_PackBuffer)) {
                 any object = decode(context, _M_PackBuffer);
                 if (object.has_value()) {
-                    next->handleRead(context, buffer, object);
+                    invokeReader(context, buffer, object);
                 }
             }
         }

@@ -38,6 +38,7 @@ public:
 
     size_t         readIndex() const;
     void           setReadIndex(const size_t &readIndex);
+
 protected:
     size_t  copyFrom(const Element *datas, size_t len);
 private:

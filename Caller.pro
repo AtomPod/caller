@@ -10,10 +10,12 @@ include(third_party/asio/AsioLibrary.pri)
 include(third_party/sigslot/SigSlotLibrary.pri)
 
 SOURCES += \
+        src/caller/call/iohandler.cpp \
+        src/caller/call/iopipelinecontext.cpp \
+        src/caller/call/pipelinewritereadstage.cpp \
         src/caller/async/futureeventlistener.cpp \
         src/caller/message/typedmessage.cpp \
         src/caller/route/event.cpp \
-        src/caller/call/socketpipelinecontext.cpp \
         src/caller/call/asio/tcpsockethandler.cpp \
         src/caller/call/asio/udpsockethandler.cpp \
         src/caller/call/sockethandler.cpp \
@@ -56,6 +58,8 @@ HEADERS += \
     include/caller/async/futureinterface.hpp\
     include/caller/async/future.hpp \
     include/caller/call/asio/tcpsockethandler.hpp \
+    include/caller/call/iohandler.hpp \
+    include/caller/call/iopipelinecontext.hpp \
     include/caller/call/pipelinestage/delimiterbasedframedecoder.hpp \
     include/caller/call/endpoint.hpp \
     include/caller/call/pipeline.hpp \
@@ -63,9 +67,9 @@ HEADERS += \
     include/caller/call/pipelinereadstage.hpp \
     include/caller/call/pipelinestage.hpp \
     include/caller/call/pipelinestage/delimiterbasedframeencoder.hpp \
+    include/caller/call/pipelinewritereadstage.hpp \
     include/caller/call/pipelinewritestage.hpp \
     include/caller/call/sockethandler.hpp \
-    include/caller/call/socketpipelinecontext.hpp \
     include/caller/common/error.hpp \
     include/caller/common/refptr.hpp \
     include/caller/common/signal.hpp \

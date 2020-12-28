@@ -14,14 +14,9 @@ public:
     virtual ~DelimiterBasedFrameEncoder() override {}
 public:
     virtual void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object) override {
-        auto next = nextStage();
-        if (next == nullptr) {
-            return;
-        }
-
         ObjectType encodeObject = CALLER any_cast<ObjectType>(object);
         if (encode(context, encodeObject, buffer)) {
-            next->handleWrite(context, buffer, object);
+            invokeWriter(context, buffer, object);
         }
     }
 protected:

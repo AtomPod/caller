@@ -2,7 +2,7 @@
 
 CALLER_BEGIN
 
-PipelineReadStage::PipelineReadStage()
+PipelineReadStage::PipelineReadStage() : PipelineStage(StageTypeIn)
 {
 
 }

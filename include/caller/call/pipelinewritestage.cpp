@@ -1,6 +1,6 @@
-#include "pipelinewritestage.hpp"
+#include <caller.caller/pipelinewritestage.hpp>
 
-PipelineWriteStage::PipelineWriteStage()
-{
+CALLER_BEGIN
 
-}
+
+CALLER_END

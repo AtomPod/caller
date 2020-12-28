@@ -2,9 +2,12 @@
 
 CALLER_BEGIN
 
-PipelineWriteStage::PipelineWriteStage()
+
+PipelineWriteStage::PipelineWriteStage() : PipelineStage(StageTypeOut)
 {
 
 }
+
+
 
 CALLER_END

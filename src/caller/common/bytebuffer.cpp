@@ -197,6 +197,20 @@ bool ByteBuffer::takeUTF8(StringView &view, size_t from, size_t size, Endian end
     return true;
 }
 
+ByteBuffer ByteBuffer::slice(size_t offset, size_t length, bool resize)
+{
+    size_t newSize = offset + length;
+    if (newSize > capacity()) {
+        return ByteBuffer();
+    }
+
+    ByteBuffer sub(this->data() + offset, length);
+    if (resize && newSize > this->length()) {
+        this->resize(newSize);
+    }
+    return sub;
+}
+
 char *ByteBuffer::data() {
     assert(_M_Impl != nullptr);
     return _M_Impl->data();

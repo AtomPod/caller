@@ -60,6 +60,9 @@ public:
     bool take(StringView &view, size_t from , size_t size, Endian endian = Endian::Big);
     bool takeUTF8(StringView &view, size_t from , size_t size, Endian endian = Endian::Big);
 public:
+    // 不安全函数，使用时请保证父级别的ByteBuffer不会被释放，否则会造成崩溃
+    ByteBuffer  slice(size_t offset, size_t length, bool resize = true);
+public:
     char*       data();
     const char *data() const;
     size_t      length() const;

@@ -6,30 +6,34 @@
 
 CALLER_BEGIN
 
-class CALLER_DLL_EXPORT RouteFunc : public Route
+template<typename Invokable>
+class RouteFuncInvoker : public Route
 {
 public:
-    typedef std::function<void(const EventPtr &)> Handler;
-public:
-    RouteFunc(const Handler &handler);
-    RouteFunc(const ID &id, const Route::ID &sequence, const Handler &handler);
-    RouteFunc(Handler &&handler);
-    RouteFunc(const ID &id, const Route::ID &sequence, Handler &&handler);
-    virtual ~RouteFunc();
-
-public:
-    Handler handler() const;
-    void setHandler(const Handler &handler);
-
+    RouteFuncInvoker(const Invokable &invoker) : _M_Handler(invoker) {}
+    RouteFuncInvoker(Invokable &&invoker) : _M_Handler(std::move(invoker)) {}
+    virtual ~RouteFuncInvoker() override = default;
 protected:
-    virtual void post(const EventPtr &event);
+    virtual void post(const EventPtr &event) override {
+        _M_Handler(event);
+    }
 
 private:
-    Handler _M_Handler;
+    Invokable   _M_Handler;
 };
 
-RoutePtr RouteFromFunc(const Route::ID &id,  const Route::ID &sequence, const RouteFunc::Handler &h);
-RoutePtr RouteFromFunc(const Route::ID &id,  const Route::ID &sequence, RouteFunc::Handler &&h);
+template<typename Invokable>
+inline RefPtr< RouteFuncInvoker<Invokable> > CreateRouteFuncInvoker(const Invokable &invoker) {
+    return NewRefPtr< RouteFuncInvoker<Invokable> >(invoker);
+}
+
+template<typename Invokable>
+inline RefPtr< RouteFuncInvoker<Invokable> > CreateRouteFuncInvoker(Invokable &&invoker) {
+    return NewRefPtr< RouteFuncInvoker<Invokable> >(std::move(invoker));
+}
+
+
+
 CALLER_END
 
 #endif // ROUTEFUNC_HPP

@@ -9,14 +9,6 @@ class CALLER_DLL_EXPORT PipelineReadStage : public PipelineStage
 public:
     PipelineReadStage();
     virtual ~PipelineReadStage() override = default;
-protected:
-    virtual void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object) override {
-        auto next = nextStage();
-        if (next != nullptr) {
-            next->handleWrite(context, buffer, object);
-        }
-    }
-    virtual void pipelineWriteComplete(PipelineContextPtr) override  {}
 };
 
 template<typename T>
@@ -25,7 +17,7 @@ public:
     PipelineTypedReadStage() = default;
     virtual ~PipelineTypedReadStage() override = default;
 public:
-    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) override {
+    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) override final {
         T typedObject = CALLER any_cast<T>(object);
         handleTypedRead(context, buffer, typedObject);
     }
@@ -39,7 +31,7 @@ public:
     PipelineTypedReadStage() = default;
     virtual ~PipelineTypedReadStage() override = default;
 public:
-    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) override {
+    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) override final {
         T* typedObject = CALLER any_cast<T*>(object);
         handleTypedRead(context, buffer, typedObject);
     }

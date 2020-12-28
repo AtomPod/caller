@@ -1,4 +1,4 @@
-#include <caller/call/socketpipelinecontext.hpp>
+#include <caller/call/iopipelinecontext.hpp>
 #include <caller/call/pipelinewritestage.hpp>
 #include <caller/call/pipelinereadstage.hpp>
 #include <caller/async/futureeventlistener.hpp>
@@ -9,36 +9,31 @@ CALLER_BEGIN
 class StreamReadStage : public PipelineReadStage
 {
 public:
-    StreamReadStage(size_t buffersize = 4096) : _M_ReadBuffer(buffersize), _M_Inactive(true) {}
+    StreamReadStage(size_t buffersize = 4096) : _M_ReadBuffer(buffersize) {}
     virtual ~StreamReadStage() override = default;
 public:
     virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) override {
-        auto next = nextStage();
-        if (next != nullptr) {
-            next->handleRead(context, buffer, object);
-        }
-
-        if (!_M_Inactive) {
-            context->read(_M_ReadBuffer);
-        }
+        UNUSED(buffer);
+        UNUSED(object);
+        context->notifyReadComplete();
     }
 public:
+    virtual void pipelineReadComplete(PipelineContextPtr ctx) override {
+        ctx->read(_M_ReadBuffer);
+        invokePipelineReadComplete(ctx);
+    }
+
     virtual void pipelineActive(PipelineContextPtr ctx) override {
-        _M_Inactive = false;
-
         ctx->read(_M_ReadBuffer);
+        invokePipelineActive(ctx);
     }
 
-    virtual void pipelineInactive(PipelineContextPtr) override {
-        _M_Inactive = true;
-    }
-
-    virtual void causeException(PipelineContextPtr ctx, const std::exception &) override {
+    virtual void causeException(PipelineContextPtr ctx, const std::exception &e) override {
         ctx->read(_M_ReadBuffer);
+        invokeCauseException(ctx, e);
     }
 private:
     ByteBuffer _M_ReadBuffer;
-    bool       _M_Inactive;
 };
 
 class ReadCompleteStage : public PipelineReadStage
@@ -54,15 +49,19 @@ public:
     }
 };
 
-class SocketWriteStage : public PipelineWriteStage
+class IOWriteStage : public PipelineStage
 {
 public:
-    SocketWriteStage(SocketHandler* handler) : _M_Handler(handler) {
+    IOWriteStage(IOHandler* handler) : PipelineStage(PipelineStage::StageTypeBoth), _M_Handler(handler) {
 
     }
 
-    virtual ~SocketWriteStage() override = default;
+    virtual ~IOWriteStage() override = default;
 public:
+    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object)  override {
+        invokeReader(context, buffer, object);
+    }
+
     virtual void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object) override {
         UNUSED(object);
 
@@ -93,20 +92,6 @@ public:
                     }
                 }
         }));
-
-//        future.whenFinished([context, futureSender](size_t size) mutable {
-//            context->notifyWriteComplete();
-//            futureSender.reportResult(size);
-//        }).whenCanceled([context, futureSender](const std::error_code &ec, const std::exception_ptr &e) mutable {
-//            UNUSED(ec);
-//            UNUSED(e);
-//            futureSender.reportErrorCode(ec);
-//            if (ec != asio::error::not_connected &&
-//                ec != asio::error::not_socket &&
-//                ec != asio::error::bad_descriptor) {
-//                context->notifyInactive();
-//            }
-//        });
     }
 
 public:
@@ -121,22 +106,22 @@ public:
     }
 
 private:
-    SocketHandler *_M_Handler;
+    IOHandler *_M_Handler;
     FutureInterface<size_t> _M_LastFuture;
 };
 
 
-PipelineContextPtr SocketPipelineContext::make(SocketHandler *handler)
+PipelineContextPtr IOPipelineContext::make(IOHandler *handler)
 {
-    return NewRefPtr<SocketPipelineContext>(handler);
+    return NewRefPtr<IOPipelineContext>(handler);
 }
 
-SocketPipelineContext::~SocketPipelineContext()
+IOPipelineContext::~IOPipelineContext()
 {
 
 }
 
-Future<void> SocketPipelineContext::connect(const Endpoint &endpoint)
+Future<void> IOPipelineContext::connect(const Endpoint &endpoint)
 {
     Future<void> future = _M_Handler->connect(endpoint);
 
@@ -154,7 +139,7 @@ Future<void> SocketPipelineContext::connect(const Endpoint &endpoint)
     return future;
 }
 
-Future<void> SocketPipelineContext::disconnect()
+Future<void> IOPipelineContext::disconnect()
 {
     Future<void> future = _M_Handler->disconnect();
 
@@ -172,12 +157,12 @@ Future<void> SocketPipelineContext::disconnect()
     return future;
 }
 
-Future<void> SocketPipelineContext::close()
+Future<void> IOPipelineContext::close()
 {
     return _M_Handler->close();
 }
 
-Future<size_t> SocketPipelineContext::read(ByteBuffer buffer)
+void IOPipelineContext::read(ByteBuffer buffer)
 {
     Future<size_t> future = _M_Handler->read(buffer);
 
@@ -188,7 +173,7 @@ Future<size_t> SocketPipelineContext::read(ByteBuffer buffer)
             buffer.resize(*bytes);
 
             try {
-                self->_M_ReadPipeline->handleRead(self, buffer, any());
+                self->_M_Pipeline->handleRead(self, buffer, any());
             } catch (const std::exception &e) {
                 self->notifyException(e);
             }
@@ -203,105 +188,81 @@ Future<size_t> SocketPipelineContext::read(ByteBuffer buffer)
             }
         }
     }));
-
-//    future.whenFinished([self, buffer](size_t bytes) mutable {
-//        buffer.resize(bytes);
-
-//        try {
-//            self->_M_ReadPipeline->handleRead(self, buffer, any());
-//        } catch (const std::exception &e) {
-//            self->notifyException(e);
-//        }
-
-//    }).whenCanceled([self](const std::error_code &ec, const std::exception_ptr &e) {
-//        UNUSED(ec);
-//        UNUSED(e);
-
-//        if (ec != asio::error::not_connected &&
-//            ec != asio::error::not_socket &&
-//            ec != asio::error::bad_descriptor) {
-//            self->notifyInactive();
-//        }
-//    });
-
-    return future;
 }
 
-Future<size_t> SocketPipelineContext::write(const any &object, const ByteBuffer &buffer)
+void IOPipelineContext::write(const any &object, const ByteBuffer &buffer)
 {
     FutureInterface<size_t> futureSender;
     auto self = shared_from_this();
     executor()->execute([self, object, buffer, futureSender]() {
         try {
             self->_M_SocketWriteStage->setLastFuture(futureSender);
-            self->_M_WritePipeline->handleWrite(self, buffer, object);
+            self->_M_Pipeline->handleWrite(self, buffer, object);
         } catch (const std::exception &e) {
             self->notifyException(e);
         }
     });
-    return futureSender.future();
 }
 
-Executor *SocketPipelineContext::executor()
+Executor *IOPipelineContext::executor()
 {
     return _M_Handler->executor();
 }
 
-void SocketPipelineContext::notifyActive()
+IOHandler *IOPipelineContext::handler()
 {
-    try {
-        auto self = shared_from_this();
-        _M_ReadPipeline->pipelineActive(self);
-        _M_WritePipeline->pipelineActive(self);
-    } catch (const std::exception &e) {
-        notifyException(e);
-    }
+    return _M_Handler;
 }
 
-void SocketPipelineContext::notifyInactive()
-{
-    try {
-        auto self = shared_from_this();
-        _M_ReadPipeline->pipelineInactive(self);
-        _M_WritePipeline->pipelineInactive(self);
-    } catch (const std::exception &e) {
-        notifyException(e);
-    }
-}
-
-void SocketPipelineContext::notifyReadComplete()
-{
-    try {
-        auto self = shared_from_this();
-        _M_ReadPipeline->pipelineReadComplete(self);
-        _M_WritePipeline->pipelineReadComplete(self);
-    } catch (const std::exception &e) {
-        notifyException(e);
-    }
-}
-
-void SocketPipelineContext::notifyWriteComplete()
-{
-    try {
-        auto self = shared_from_this();
-        _M_ReadPipeline->pipelineWriteComplete(self);
-        _M_WritePipeline->pipelineWriteComplete(self);
-    } catch (const std::exception &e) {
-        notifyException(e);
-    }
-}
-
-void SocketPipelineContext::notifyException(const std::exception &e)
+void IOPipelineContext::notifyActive()
 {
     auto self = shared_from_this();
-    _M_ReadPipeline->causeException(self, e);
-    _M_WritePipeline->causeException(self, e);
+    try {
+        _M_Pipeline->pipelineActive(self);
+    } catch (const std::exception &e) {
+        notifyException(e);
+    }
 }
 
-SocketPipelineContext::SocketPipelineContext(SocketHandler *handler) : _M_Handler(handler) {
-    _M_SocketWriteStage = NewRefPtr<SocketWriteStage>(handler);
-    _M_WritePipeline    = Pipeline::make(_M_SocketWriteStage);
-    _M_ReadPipeline     = Pipeline::make(PipelineStage::create<ReadCompleteStage>());
+void IOPipelineContext::notifyInactive()
+{
+    auto self = shared_from_this();
+    try {
+        _M_Pipeline->pipelineInactive(self);
+    } catch (const std::exception &e) {
+        notifyException(e);
+    }
+}
+
+void IOPipelineContext::notifyReadComplete()
+{
+    try {
+        auto self = shared_from_this();
+        _M_Pipeline->pipelineReadComplete(self);
+    } catch (const std::exception &e) {
+        notifyException(e);
+    }
+}
+
+void IOPipelineContext::notifyWriteComplete()
+{
+    try {
+        auto self = shared_from_this();
+        _M_Pipeline->pipelineWriteComplete(self);
+    } catch (const std::exception &e) {
+        notifyException(e);
+    }
+}
+
+void IOPipelineContext::notifyException(const std::exception &e)
+{
+    auto self = shared_from_this();
+    _M_Pipeline->causeException(self, e);
+}
+
+IOPipelineContext::IOPipelineContext(IOHandler *handler) : _M_Handler(handler) {
+    _M_SocketWriteStage = NewRefPtr<IOWriteStage>(handler);
+    _M_Pipeline         = Pipeline::make(CALLER CreateStreamReadStage(4096), _M_SocketWriteStage);
 }
 
 PipelineStagePtr CreateStreamReadStage(uint64_t buffersize)

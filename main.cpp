@@ -3,9 +3,10 @@
 #include <caller/executor/threadexecutioncontext.hpp>
 #include <caller/call/pipelinewritestage.hpp>
 #include <caller/call/pipelinereadstage.hpp>
+#include <caller/call/pipelinewritereadstage.hpp>
 #include <caller/call/pipeline.hpp>
 #include <caller/call/asio/tcpsockethandler.hpp>
-#include <caller/call/socketpipelinecontext.hpp>
+#include <caller/call/iopipelinecontext.hpp>
 #include <caller/call/asio/udpsockethandler.hpp>
 #include <caller/common/ringbuffer.hpp>
 #include <caller/common/endian.hpp>
@@ -30,6 +31,7 @@ struct Data {
     int age;
 };
 
+
 class TestReadPipeline : public CALLER PipelineReadStage
 {
 public:
@@ -41,10 +43,7 @@ protected:
 
         CALLER ByteBuffer buffer;
         buffer.copy(message, strlen(message));
-        Future<size_t> result = context->write(any(), buffer);
-        result.addListener(CreateFutureEventListenerFunction([](const FutureEvent &e) {
-            std::cout << "size: " << e.result<size_t>() << '\n';
-        }));
+        context->write(any(), buffer);
     }
 
     virtual void pipelineInactive(PipelineContextPtr context) {
@@ -63,6 +62,8 @@ protected:
                     std::cout << "connect:" << ec.message() << std::endl;
                 }
         }));
+
+        invokePipelineActive(context);
 
 //        context->connect(endpoint).whenCanceled([](const std::error_code &ec, const std::exception_ptr &e) {
 //            std::cout << "connect:" << ec.message() << std::endl;
@@ -95,14 +96,12 @@ protected:
                                  CALLER ByteBuffer buffer,
                                  const any &object) override {
         std::cout << StringView(buffer.data(), buffer.length());
-        auto next = nextStage();
-        if (next != nullptr) {
-            next->handleRead(context, buffer, object);
-        }
+        invokeReader(context, buffer, object);
     }
 
-    virtual void causeException(CALLER PipelineContextPtr, const std::exception &e) override {
+    virtual void causeException(CALLER PipelineContextPtr ctx, const std::exception &e) override {
         std::cout << "exception: " << e.what() << '\n';
+        invokeCauseException(ctx, e);
     }
 
 };
@@ -113,6 +112,53 @@ struct Message {
     uint16_t mid;
     uint16_t eif;
 };
+
+struct Request {
+    ::Message *object;
+    std::function<void(EventPtr)> callback;
+};
+
+class MessageRouter : public PipelineTypedWriteStage<::Request> {
+public:
+    MessageRouter(RouterPtr append) : _M_appendRouter(append) {
+
+    }
+
+    virtual void handleTypedWrite(PipelineContextPtr context, ByteBuffer buffer, const ::Request &object) override {
+        _M_Route = CreateRouteFuncInvoker(object.callback);
+
+        _M_Route->setID(object.object->mid);
+        _M_Route->setSequenceNumber(0x12);
+
+        std::cout << "write: " << _M_Route->id() << '\n';
+
+        _M_appendRouter->add(_M_Route);
+
+        invokeWriter(context, buffer, object.object);
+    }
+
+private:
+    RouterPtr _M_appendRouter;
+    RoutePtr  _M_Route;
+};
+
+class MessageReadRouter : public PipelineTypedReadStage<::Message*> {
+public:
+    MessageReadRouter(RouterPtr run) : _M_runRouter(run) {
+
+    }
+
+    virtual void handleTypedRead(PipelineContextPtr context, ByteBuffer buffer, ::Message* msg) override {
+        EventPtr e = Event::make(msg->mid, 0x12, msg);
+        _M_runRouter->post(e);
+
+        invokeReader(context, buffer, msg);
+    }
+
+private:
+    RouterPtr _M_runRouter;
+};
+
 
 class MessageDelimiterBaseFrameEncoder : public DelimiterBasedFrameEncoder<::Message*>
 {
@@ -131,29 +177,6 @@ public:
     }
 };
 
-class Empty : public PipelineWriteStage
-{
-public:
-    Empty() {}
-
-    virtual void pipelineActive(PipelineContextPtr ctx) {
-        std::cout << "connected\n";
-
-        ::Message* msg = new ::Message();
-        msg->pif = 0x1412;
-        msg->eif = 0x1212;
-        msg->length = sizeof(::Message);
-        msg->mid    = 0x12;
-
-        ctx->write(msg, ByteBuffer());
-    }
-
-    void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object) {
-        if (auto next = nextStage(); next != nullptr) {
-            next->handleWrite(context, buffer, object);
-        }
-    }
-};
 
 class MessageDelimiterBaseFrameDecoder : public DelimiterBasedFrameDecoder<uint16_t, uint16_t>
 {
@@ -164,6 +187,9 @@ public:
 
 protected:
     virtual any decode(PipelineContextPtr context,  ByteBuffer pack) {
+        static int i = 0;
+        ++i;
+
         ::Message* newMsg = new ::Message();
         pack.take(newMsg->pif, 0);
         pack.take(newMsg->length, 2);
@@ -179,8 +205,41 @@ class MessagePrinter : public PipelineTypedReadStage<::Message*>
 public:
     void handleTypedRead(PipelineContextPtr context, ByteBuffer buffer, ::Message *object) {
         std::cout << "message: " << object->mid << '\n';
+
+        if (nextStage()) {
+            nextStage()->handleRead(context, buffer , object);
+        }
     }
 };
+
+class Empty : public PipelineWriteStage
+{
+public:
+    Empty() {}
+
+    virtual void pipelineActive(PipelineContextPtr ctx) {
+        std::cout << "connected\n";
+
+        for (auto i = 0; i < 2; ++i) {
+            ::Message* msg = new ::Message();
+            msg->pif = 0x1412;
+            msg->eif = 0x1212;
+            msg->length = sizeof(::Message);
+            msg->mid    = uint16_t(0x12 + i);
+
+            ::Request r;
+            r.object = msg;
+            r.callback = [](EventPtr ptr) {
+                ::Message* msg = CALLER any_cast<::Message*>(ptr->payload());
+                std::cout << "recv message: " << msg->mid << '\n';
+            };
+
+            ctx->write(r, ByteBuffer());
+        }
+
+    }
+};
+
 
 class OldMessage : public CALLER Message {
 public:
@@ -251,22 +310,22 @@ int main()
     CALLER ThreadExecutionContext tec(executionContext);
 //    CALLER CoreSingleThreadExecutor singleExecutor;
 
-    CALLER MessageFactoryPtr factory = CALLER MessageFactory::make();
-    factory->registerMessageMeta(CALLER MessageMeta::create<OldMessage>());
-    factory->registerMessageMeta(CALLER MessageMeta::create<NewMessage>());
+//    CALLER MessageFactoryPtr factory = CALLER MessageFactory::make();
+//    factory->registerMessageMeta(CALLER MessageMeta::create<OldMessage>());
+//    factory->registerMessageMeta(CALLER MessageMeta::create<NewMessage>());
 
-    MessageMeta *meta = factory->messageMetaById(0x12);
+//    MessageMeta *meta = factory->messageMetaById(0x12);
 
-    CALLER MessagePtr _0x12Msg = factory->messageById(0x12);
+//    CALLER MessagePtr _0x12Msg = factory->messageById(0x12);
 
-    RefPtr<OldMessage> _T0x12Msg = StaticCastRefPtr<OldMessage>(_0x12Msg);
+//    RefPtr<OldMessage> _T0x12Msg = StaticCastRefPtr<OldMessage>(_0x12Msg);
 
-    CALLER MessagePtr _0x13Msg = factory->messageById(0x15);
+//    CALLER MessagePtr _0x13Msg = factory->messageById(0x15);
 
-    std::cout << _0x13Msg->id() << '\n';
-    std::cout << meta->type()->name() << "," << _T0x12Msg->id() << '\n';
+//    std::cout << _0x13Msg->id() << '\n';
+//    std::cout << meta->type()->name() << "," << _T0x12Msg->id() << '\n';
 
-    return 0;
+//    return 0;
 
 //    CALLER RouterPtr brouter = CALLER Router::create<BroadcastRouter>();
 //    CALLER RouterPtr router  = CALLER Router::create<PersistenceRouter>();
@@ -305,24 +364,47 @@ int main()
 
 //    return 0;
 
+    CALLER RouterPtr brouter = CALLER Router::create<BroadcastRouter>();
+    CALLER RouterPtr trouter = CALLER Router::create<TemporaryRouter>();
+    CALLER RouterPtr router  = CALLER Router::create<PersistenceRouter>();
+
+    auto r = CreateRouteFuncInvoker([](EventPtr e) {
+        std::cout << "proute: " << e->id() << '\n';
+    });
+
+    r->setID(0x13);
+    r->setSequenceNumberMask(0x00);
+
+    auto r2 = CreateRouteFuncInvoker([](EventPtr e) {
+        std::cout << "proute: " << e->id() << '\n';
+    });
+
+    r2->setID(0x12);
+    r2->setSequenceNumberMask(0x00);
+
+    router->add(r);
+    router->add(r2);
+    brouter->add(router);
+    brouter->add(trouter);
 
     CALLER AsioUdpSocketHandler* socketHandler = new CALLER AsioUdpSocketHandler(executionContext);
-    CALLER PipelineContextPtr pipelineContext = CALLER SocketPipelineContext::make(socketHandler);
-    pipelineContext->readPipeline()->append(CALLER CreateStreamReadStage(4096));
+    CALLER PipelineContextPtr pipelineContext = CALLER IOPipelineContext::make(socketHandler);
 
-    auto rpipe = pipelineContext->readPipeline();
+    auto rpipe = pipelineContext->pipeline();
+    rpipe->append(PipelineStage::create<Empty>());
+
+    rpipe->append(PipelineStage::create<MessageRouter>(trouter));
+    rpipe->append(PipelineStage::create<MessageDelimiterBaseFrameEncoder>());
+
+    rpipe->append(PipelineStage::create<MessageReadRouter>(brouter));
     rpipe->append(PipelineStage::create<MessageDelimiterBaseFrameDecoder>());
-    rpipe->append(PipelineStage::create<MessagePrinter>());
-
-    auto wpipe = pipelineContext->writePipeline();
-    wpipe->append(PipelineStage::create<MessageDelimiterBaseFrameEncoder>());
-    wpipe->append(PipelineStage::create<Empty>());
 
     CALLER Endpoint endpoint;
     endpoint.setHost("127.0.0.1");
-    endpoint.setPort("9096");
+    endpoint.setPort("9097");
 
     pipelineContext->connect(endpoint);
+
     executionContext.start();
 #endif
     return 0;
