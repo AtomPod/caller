@@ -17,12 +17,12 @@ public:
     PipelineTypedReadStage() = default;
     virtual ~PipelineTypedReadStage() override = default;
 public:
-    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) override final {
-        T typedObject = CALLER any_cast<T>(object);
-        handleTypedRead(context, buffer, typedObject);
+    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const any &object) override final {
+        const T* typedObject = CALLER any_cast<T>(&object);
+        handleTypedRead(context, buffer, *typedObject);
     }
 protected:
-    virtual void handleTypedRead(PipelineContextPtr context, ByteBuffer buffer, const T &object) = 0;
+    virtual void handleTypedRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const T &object) = 0;
 };
 
 template<typename T>
@@ -31,12 +31,12 @@ public:
     PipelineTypedReadStage() = default;
     virtual ~PipelineTypedReadStage() override = default;
 public:
-    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) override final {
+    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const any &object) override final {
         T* typedObject = CALLER any_cast<T*>(object);
         handleTypedRead(context, buffer, typedObject);
     }
 protected:
-    virtual void handleTypedRead(PipelineContextPtr context, ByteBuffer buffer, T *object) = 0;
+    virtual void handleTypedRead(const PipelineContextPtr& context, const ByteBuffer& buffer, T *object) = 0;
 };
 
 

@@ -21,6 +21,7 @@ public:
     virtual Future<size_t>      read(ByteBuffer buffer)             = 0;
     virtual Future<size_t>      write(const ByteBuffer &buffer)     = 0;
     virtual Executor*           executor()                          = 0;
+    virtual Future<void>        closeFuture()                      = 0;
 };
 
 CALLER_END

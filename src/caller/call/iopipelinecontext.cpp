@@ -12,23 +12,26 @@ public:
     StreamReadStage(size_t buffersize = 4096) : _M_ReadBuffer(buffersize) {}
     virtual ~StreamReadStage() override = default;
 public:
-    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) override {
+    virtual void handleRead(const PipelineContextPtr & context, const ByteBuffer &buffer, const any &object) override {
         UNUSED(buffer);
         UNUSED(object);
         context->notifyReadComplete();
     }
 public:
-    virtual void pipelineReadComplete(PipelineContextPtr ctx) override {
+    virtual void pipelineReadComplete(const PipelineContextPtr & ctx) override {
+        _M_ReadBuffer.reset();
         ctx->read(_M_ReadBuffer);
         invokePipelineReadComplete(ctx);
     }
 
-    virtual void pipelineActive(PipelineContextPtr ctx) override {
+    virtual void pipelineActive(const PipelineContextPtr & ctx) override {
+        _M_ReadBuffer.reset();
         ctx->read(_M_ReadBuffer);
         invokePipelineActive(ctx);
     }
 
-    virtual void causeException(PipelineContextPtr ctx, const std::exception &e) override {
+    virtual void causeException(const PipelineContextPtr & ctx, const std::exception &e) override {
+        _M_ReadBuffer.reset();
         ctx->read(_M_ReadBuffer);
         invokeCauseException(ctx, e);
     }
@@ -42,7 +45,7 @@ public:
     ReadCompleteStage()  {}
     virtual ~ReadCompleteStage() override = default;
 public:
-    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) override {
+    virtual void handleRead(const PipelineContextPtr & context, const ByteBuffer &buffer, const any &object) override {
         UNUSED(buffer);
         UNUSED(object);
         context->notifyReadComplete();
@@ -58,56 +61,34 @@ public:
 
     virtual ~IOWriteStage() override = default;
 public:
-    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object)  override {
+    virtual void handleRead(const PipelineContextPtr & context, const ByteBuffer &buffer, const any &object)  override {
         invokeReader(context, buffer, object);
     }
 
-    virtual void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object) override {
+    virtual void handleWrite(const PipelineContextPtr & context, ByteBuffer &buffer, const any &object) override {
         UNUSED(object);
 
-        FutureInterface<size_t> futureSender = _M_LastFuture;
         Future<size_t> future = _M_Handler->write(buffer);
         future.addListener(CreateFutureEventListenerFunction(
-            [context, futureSender](const FutureEvent &e) mutable {
+            [context](const FutureEvent &e) mutable {
 
                 if (e.isFinished()) {
                     context->notifyWriteComplete();
-                    size_t* result = e.resultPtr<size_t>();
-                    futureSender.reportResult(result != nullptr ? *result : 0);
                 } else {
                     if (e.isError()) {
                         Error ec = e.errorCode();
-
-                        futureSender.reportErrorCode(e.errorCode());
-
                         if (ec != GenericError::not_connected &&
                             ec != GenericError::not_a_socket &&
                             ec != GenericError::bad_file_descriptor) {
                             context->notifyInactive();
                         }
-                    } else if (e.isException()) {
-                        futureSender.reportException(e.exceptionPtr());
-                    } else {
-                        futureSender.reportCanceled();
                     }
                 }
         }));
     }
 
-public:
-    FutureInterface<size_t> lastFuture() const
-    {
-        return _M_LastFuture;
-    }
-
-    void setLastFuture(const FutureInterface<size_t> &lastFuture)
-    {
-        _M_LastFuture = lastFuture;
-    }
-
 private:
     IOHandler *_M_Handler;
-    FutureInterface<size_t> _M_LastFuture;
 };
 
 
@@ -170,7 +151,7 @@ void IOPipelineContext::read(ByteBuffer buffer)
     future.addListener(CreateFutureEventListenerFunction([self, buffer](const FutureEvent &e) mutable {
         if (e.isFinished()) {
             size_t* bytes = e.resultPtr<size_t>();
-            buffer.resize(*bytes);
+            buffer.setReadableLength(*bytes);
 
             try {
                 self->_M_Pipeline->handleRead(self, buffer, any());
@@ -192,11 +173,9 @@ void IOPipelineContext::read(ByteBuffer buffer)
 
 void IOPipelineContext::write(const any &object, const ByteBuffer &buffer)
 {
-    FutureInterface<size_t> futureSender;
     auto self = shared_from_this();
-    executor()->execute([self, object, buffer, futureSender]() {
+    executor()->execute([self, object, buffer]() {
         try {
-            self->_M_SocketWriteStage->setLastFuture(futureSender);
             self->_M_Pipeline->handleWrite(self, buffer, object);
         } catch (const std::exception &e) {
             self->notifyException(e);

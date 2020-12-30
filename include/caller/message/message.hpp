@@ -29,6 +29,8 @@ public:
     virtual ~Message();
 public:
     virtual ID          id() const = 0;
+    virtual ID          sequenceNumber() const = 0;
+    virtual void        setSequenceNumber(const ID &id) = 0;
 };
 
 CALLER_END

@@ -22,6 +22,7 @@
 #include <caller/executor/singlethreadexecution.hpp>
 #include <caller/async/futureinterface.hpp>
 #include <caller/async/futureeventlistener.hpp>
+#include <asio/posix/stream_descriptor.hpp>
 
 using namespace std;
 
@@ -37,7 +38,7 @@ class TestReadPipeline : public CALLER PipelineReadStage
 public:
     TestReadPipeline() {}
 protected:
-    virtual void pipelineActive(PipelineContextPtr context)         {
+    virtual void pipelineActive(const PipelineContextPtr & context)         {
         std::cout << "connected\n";
         auto message = "GET / HTTP/1.1\r\nHost: www.baidu.com\r\nConnection:Keep-Alive\r\n\r\n";
 
@@ -46,7 +47,7 @@ protected:
         context->write(any(), buffer);
     }
 
-    virtual void pipelineInactive(PipelineContextPtr context) {
+    virtual void pipelineInactive(const PipelineContextPtr & context) {
         std::cout << "disconnected\n";
 
         CALLER Endpoint endpoint;
@@ -54,57 +55,149 @@ protected:
         endpoint.setPort("80");
 
         context->connect(endpoint).addListener(
-                CreateFutureEventListenerFunction([](const FutureEvent &e) {
-                if (e.isFinished()) {
-                     std::cout << "finished: connected\n";
-                } else if (e.isError()) {
-                    Error ec = e.errorCode();
-                    std::cout << "connect:" << ec.message() << std::endl;
-                }
+                    CreateFutureEventListenerFunction([](const FutureEvent &e) {
+            if (e.isFinished()) {
+                std::cout << "finished: connected\n";
+            } else if (e.isError()) {
+                Error ec = e.errorCode();
+                std::cout << "connect:" << ec.message() << std::endl;
+            }
         }));
 
         invokePipelineActive(context);
 
-//        context->connect(endpoint).whenCanceled([](const std::error_code &ec, const std::exception_ptr &e) {
-//            std::cout << "connect:" << ec.message() << std::endl;
-//        }).whenFinished([]() {
-//            std::cout << "finished: connected\n";
-//        });
+        //        context->connect(endpoint).whenCanceled([](const std::error_code &ec, const std::exception_ptr &e) {
+        //            std::cout << "connect:" << ec.message() << std::endl;
+        //        }).whenFinished([]() {
+        //            std::cout << "finished: connected\n";
+        //        });
     }
 
-    virtual void pipelineReadComplete(PipelineContextPtr ctx)   {
+    virtual void pipelineReadComplete(const PipelineContextPtr & ctx)   {
         std::cout << "read complete\n";
 
         ctx->disconnect().addListener(
-             CreateFutureEventListenerFunction([](const FutureEvent &e) {
-                    if (e.isError()) {
-                        Error ec = e.errorCode();
-                        std::cout << "disconnected:" << ec.message() << std::endl;
-                    }
-            })
-        );
-//        ctx->disconnect().whenCanceled([](const std::error_code &ec, const std::exception_ptr &e) {
-//            std::cout << "disconnected: " << ec.message() << std::endl;
-//        });
+                    CreateFutureEventListenerFunction([](const FutureEvent &e) {
+            if (e.isError()) {
+                Error ec = e.errorCode();
+                std::cout << "disconnected:" << ec.message() << std::endl;
+            }
+        })
+                    );
+        //        ctx->disconnect().whenCanceled([](const std::error_code &ec, const std::exception_ptr &e) {
+        //            std::cout << "disconnected: " << ec.message() << std::endl;
+        //        });
     }
 
-    virtual void pipelineWriteComplete(PipelineContextPtr)   {
+    virtual void pipelineWriteComplete(const PipelineContextPtr &)   {
         std::cout << "write complete\n";
     }
 
-    virtual void handleRead(CALLER PipelineContextPtr context,
-                                 CALLER ByteBuffer buffer,
-                                 const any &object) override {
-        std::cout << StringView(buffer.data(), buffer.length());
+    virtual void handleRead(const PipelineContextPtr &context,
+                             const ByteBuffer &buffer,
+                            const any &object) override {
+        std::cout << StringView(buffer.data(), buffer.readableLength());
         invokeReader(context, buffer, object);
     }
 
-    virtual void causeException(CALLER PipelineContextPtr ctx, const std::exception &e) override {
+    virtual void causeException(const PipelineContextPtr & ctx, const std::exception &e) override {
         std::cout << "exception: " << e.what() << '\n';
         invokeCauseException(ctx, e);
     }
 
 };
+
+
+class NewMessage : public CALLER Message {
+public:
+    NewMessage() : mid(static_cast<uint16_t>(messageId())), length(10) {
+
+    }
+
+    ~NewMessage() override {
+
+    }
+
+    static  ID        messageId() {
+        return 0x19;
+    }
+
+    virtual ID          id() const  {
+        return messageId();
+    }
+
+    virtual ID          sequenceNumber() const {
+        return seq;
+    }
+
+    virtual void        setSequenceNumber(const ID &id) {
+        setSeq(id);
+    }
+
+    virtual     Error   serialize(ByteBuffer &buffer)   const  {
+        buffer.put(pif);
+        buffer.put(length);
+
+        ByteBuffer lengthBuff = buffer.slice(buffer.writeIndex() - sizeof(length), sizeof(length), false);
+
+        buffer.put(mid);
+        buffer.put(seq);
+        buffer.put(age);
+        buffer.put(StringView(name.data(), name.size()));
+        buffer.put(eif);
+
+        uint16_t len = static_cast<uint16_t>(buffer.readableLength());
+        lengthBuff.put(len);
+        return Error();
+    }
+
+    virtual     Error   deserialize(ByteBuffer buffer)  {
+        uint16_t nameSize = 0;
+        buffer.take(pif);
+        buffer.take(length);
+        buffer.take(mid);
+        buffer.take(seq);
+        buffer.take(age);
+        buffer.take(nameSize);
+        name.resize(nameSize);
+
+        StringView view(name.data(), name.size());
+        buffer.take(view, nameSize);
+        buffer.take(eif);
+
+        return Error();
+    }
+
+    uint16_t getPif() const;
+    void setPif(const uint16_t &value);
+
+    uint16_t getLength() const;
+    void setLength(const uint16_t &value);
+
+    uint16_t getMid() const;
+
+    uint16_t getEif() const;
+    void setEif(const uint16_t &value);
+
+    uint16_t getAge() const;
+    void setAge(const uint16_t &value);
+
+    std::string getName() const;
+    void setName(const std::string &value);
+
+    uint16_t getSeq() const;
+    void setSeq(const uint16_t &value);
+
+private:
+    uint16_t    pif;
+    uint16_t    length;
+    uint16_t    mid;
+    uint16_t    seq;
+    uint16_t    age;
+    std::string name;
+    uint16_t eif;
+};
+
 
 struct Message {
     uint16_t pif;
@@ -114,7 +207,7 @@ struct Message {
 };
 
 struct Request {
-    ::Message *object;
+    RefPtr<NewMessage> object;
     std::function<void(EventPtr)> callback;
 };
 
@@ -124,33 +217,34 @@ public:
 
     }
 
-    virtual void handleTypedWrite(PipelineContextPtr context, ByteBuffer buffer, const ::Request &object) override {
-        _M_Route = CreateRouteFuncInvoker(object.callback);
+    virtual void handleTypedWrite(const PipelineContextPtr & context, ByteBuffer & buffer, const ::Request &object) override {
+        static int seq = 1;
+        object.object->setSequenceNumber(seq++);
+        RoutePtr route = CreateRouteFuncInvoker(object.callback);
 
-        _M_Route->setID(object.object->mid);
-        _M_Route->setSequenceNumber(0x12);
+        route->setID(object.object->getMid());
+        route->setSequenceNumber(object.object->getSeq());
 
-        std::cout << "write: " << _M_Route->id() << '\n';
-
-        _M_appendRouter->add(_M_Route);
-
+        _M_appendRouter->add(route);
         invokeWriter(context, buffer, object.object);
     }
 
 private:
     RouterPtr _M_appendRouter;
-    RoutePtr  _M_Route;
 };
 
-class MessageReadRouter : public PipelineTypedReadStage<::Message*> {
+class MessageReadRouter : public PipelineTypedReadStage< std::list<MessagePtr> > {
 public:
     MessageReadRouter(RouterPtr run) : _M_runRouter(run) {
 
     }
 
-    virtual void handleTypedRead(PipelineContextPtr context, ByteBuffer buffer, ::Message* msg) override {
-        EventPtr e = Event::make(msg->mid, 0x12, msg);
-        _M_runRouter->post(e);
+    virtual void handleTypedRead(const PipelineContextPtr & context, const ByteBuffer & buffer, const std::list<MessagePtr> &msg) override {
+        for (auto m : msg) {
+            EventPtr e = Event::make(m->id(), m->sequenceNumber(), m);
+            _M_runRouter->post(e);
+        }
+
 
         invokeReader(context, buffer, msg);
     }
@@ -159,84 +253,58 @@ private:
     RouterPtr _M_runRouter;
 };
 
-
-class MessageDelimiterBaseFrameEncoder : public DelimiterBasedFrameEncoder<::Message*>
+class MessageDelimiterBaseFrameDecoder : public DelimiterBasedFrameDecoder<uint16_t, uint16_t, MessagePtr>
 {
 public:
-    MessageDelimiterBaseFrameEncoder() {
+    MessageDelimiterBaseFrameDecoder(MessageFactoryPtr factory) : DelimiterBasedFrameDecoder(8, 2, 0x1412, 0x1212, 4096), _M_MsgFactory(factory) {
 
     }
-public:
-    virtual bool encode(PipelineContextPtr context, ::Message* object , ByteBuffer &pack) override {
-        pack.put(object->pif);
-        pack.put(object->length);
-        pack.put(object->mid);
-        pack.put(object->eif);
-        std::cout << "size: " << pack.length() << '\n';
-        return true;
-    }
-};
 
+    virtual void handleRead(const PipelineContextPtr &context, const ByteBuffer &buffer, const any &object) override  {
+        std::chrono::steady_clock::time_point beg = std::chrono::steady_clock::now();
+        DelimiterBasedFrameDecoder::handleRead(context, buffer, object);
+        auto end = std::chrono::steady_clock::now();
 
-class MessageDelimiterBaseFrameDecoder : public DelimiterBasedFrameDecoder<uint16_t, uint16_t>
-{
-public:
-    MessageDelimiterBaseFrameDecoder() : DelimiterBasedFrameDecoder(6, 2, 0x1412, 0x1212, 4096) {
+        std::cout << "d: " << (end - beg).count() << '\n';
 
     }
 
 protected:
-    virtual any decode(PipelineContextPtr context,  ByteBuffer pack) {
-        static int i = 0;
-        ++i;
+    virtual MessagePtr decode(const PipelineContextPtr & context,  ByteBuffer pack) {
 
-        ::Message* newMsg = new ::Message();
-        pack.take(newMsg->pif, 0);
-        pack.take(newMsg->length, 2);
-        pack.take(newMsg->mid, 4);
-        pack.take(newMsg->eif, 6);
-        return newMsg;
+        uint16_t mid = 0;
+        size_t rindex = pack.readIndex();
+        pack.setReadIndex(rindex + 4);
+        pack.take(mid);
+        pack.setReadIndex(rindex);
+
+        MessagePtr msg = _M_MsgFactory->messageById(mid);
+        if (msg != nullptr) {
+            if (!msg->deserialize(pack)) {
+                return msg;
+            }
+        }
+        return nullptr;
+
     }
+
+    virtual void causeException(const PipelineContextPtr & ctx, const std::exception &e) {
+        std::cout << "cause exeception: " << e.what() << '\n';
+    }
+private:
+    MessageFactoryPtr _M_MsgFactory;
 };
 
 
 class MessagePrinter : public PipelineTypedReadStage<::Message*>
 {
 public:
-    void handleTypedRead(PipelineContextPtr context, ByteBuffer buffer, ::Message *object) {
+    void handleTypedRead(const PipelineContextPtr &  context, const ByteBuffer &buffer, ::Message *object) {
         std::cout << "message: " << object->mid << '\n';
 
         if (nextStage()) {
             nextStage()->handleRead(context, buffer , object);
         }
-    }
-};
-
-class Empty : public PipelineWriteStage
-{
-public:
-    Empty() {}
-
-    virtual void pipelineActive(PipelineContextPtr ctx) {
-        std::cout << "connected\n";
-
-        for (auto i = 0; i < 2; ++i) {
-            ::Message* msg = new ::Message();
-            msg->pif = 0x1412;
-            msg->eif = 0x1212;
-            msg->length = sizeof(::Message);
-            msg->mid    = uint16_t(0x12 + i);
-
-            ::Request r;
-            r.object = msg;
-            r.callback = [](EventPtr ptr) {
-                ::Message* msg = CALLER any_cast<::Message*>(ptr->payload());
-                std::cout << "recv message: " << msg->mid << '\n';
-            };
-
-            ctx->write(r, ByteBuffer());
-        }
-
     }
 };
 
@@ -251,139 +319,90 @@ public:
         return messageId();
     }
 
-    virtual     Error   serialize(ByteBuffer buffer)   const  {
+    virtual     Error   serialize(ByteBuffer &buffer)   const  {
         return Error();
     }
 
-    virtual     Error   deserialize(ByteBuffer buffer)  {
+    virtual     Error   deserialize(const ByteBuffer &buffer)  {
         return Error();
     }
 };
 
-class NewMessage : public CALLER Message {
+
+class MessageDelimiterBaseFrameEncoder : public DelimiterBasedFrameEncoder< RefPtr<NewMessage> >
+{
 public:
-    static  ID        messageId() {
-        return 0x15;
-    }
+    MessageDelimiterBaseFrameEncoder() {
 
-    virtual ID          id() const  {
-        return messageId();
     }
+public:
 
-    virtual     Error   serialize(ByteBuffer buffer)   const  {
-        return Error();
+    virtual bool encode(const PipelineContextPtr & context,  RefPtr<NewMessage> object , ByteBuffer &pack) override {
+        std::chrono::steady_clock::time_point beg = std::chrono::steady_clock::now();
+
+        object->serialize(pack);
+
+        auto end = std::chrono::steady_clock::now();
+
+        std::cout << "size: " << pack.readableLength() << ", d: " << (end - beg).count() << '\n';
+        return true;
     }
+};
 
-    virtual     Error   deserialize(ByteBuffer buffer)  {
-        return Error();
+
+class Empty : public PipelineWriteStage
+{
+public:
+    Empty() {}
+
+    virtual void pipelineActive(const PipelineContextPtr &ctx) {
+        std::cout << "connected\n";
+
+        for (auto i = 0; i < 2; ++i) {
+
+            RefPtr< NewMessage > msg = NewRefPtr< NewMessage >();
+            msg->setPif(0x1412);
+            msg->setEif(0x1212);
+            msg->setAge(i);
+            msg->setSeq(i + 1);
+            msg->setName("hello: " + std::to_string(i));
+
+            ::Request r;
+            r.object = msg;
+
+            auto now = std::chrono::steady_clock::now();
+            r.callback = [now](EventPtr ptr) {
+                auto end = std::chrono::steady_clock::now();
+                auto msg = CALLER any_cast<MessagePtr>(ptr->payload());
+                std::cout << "recv message: " << msg->sequenceNumber() << ", ns: " << (end - now).count() << '\n';
+            };
+
+            ctx->write(r, ByteBuffer(512));
+        }
+
     }
 };
 
 void printRange(std::chrono::steady_clock::time_point start, std::chrono::steady_clock::time_point end) {
     printf("time start: %llu, time end: %llu, dt: %llu\n", start.time_since_epoch().count(),
-              end.time_since_epoch().count(), (end - start).count());
+           end.time_since_epoch().count(), (end - start).count());
 }
+
+static int count = 0;
+static std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
 
 int main()
 {
-//    FutureInterface<std::chrono::steady_clock::time_point> interface;
-
-////    for (auto i = 0; i < 15; ++i) {
-////        interface.future().whenFinished([](std::chrono::steady_clock::time_point beg) {
-////            auto end = std::chrono::steady_clock::now();
-////            std::cout << "endi: " << (end - beg).count() << '\n';
-////        });
-////    }
-
-//    std::thread t1([interface]() mutable {
-//        interface.reportResult(std::chrono::steady_clock::now());
-//        std::this_thread::sleep_for(std::chrono::seconds(2));
-//    });
-
-//    t1.join();
-
-//    return 0;
 #if 1
 
 
     CALLER AsioExecutionContext executionContext;
     CALLER ThreadExecutionContext tec(executionContext);
-//    CALLER CoreSingleThreadExecutor singleExecutor;
-
-//    CALLER MessageFactoryPtr factory = CALLER MessageFactory::make();
-//    factory->registerMessageMeta(CALLER MessageMeta::create<OldMessage>());
-//    factory->registerMessageMeta(CALLER MessageMeta::create<NewMessage>());
-
-//    MessageMeta *meta = factory->messageMetaById(0x12);
-
-//    CALLER MessagePtr _0x12Msg = factory->messageById(0x12);
-
-//    RefPtr<OldMessage> _T0x12Msg = StaticCastRefPtr<OldMessage>(_0x12Msg);
-
-//    CALLER MessagePtr _0x13Msg = factory->messageById(0x15);
-
-//    std::cout << _0x13Msg->id() << '\n';
-//    std::cout << meta->type()->name() << "," << _T0x12Msg->id() << '\n';
-
-//    return 0;
-
-//    CALLER RouterPtr brouter = CALLER Router::create<BroadcastRouter>();
-//    CALLER RouterPtr router  = CALLER Router::create<PersistenceRouter>();
-//    CALLER RouterPtr trouter = CALLER Router::create<TemporaryRouter>();
-
-//    brouter->add(trouter);
-//    brouter->add(router);
-
-//    auto route2 = NewRefPtr<RouteFunc>([](const EventPtr &e) {
-//        std::cout << "route2: " << e->id() << '\n';
-//    });
-
-//    route2->setID(0);
-//    route2->setIDMask(0);
-//    route2->setSequenceNumberMask(0);
-//    trouter->add(route2);
-
-
-//    auto route = NewRefPtr<RouteFunc>([](const EventPtr &e) {
-//        std::cout << "route1: " << e->id() << '\n';
-//    });
-
-//    route->setID(0x10);
-//    route->setIDMask(0x10);
-//    route->setSequenceNumberMask(0);
-//    router->add(route);
-
-//    ::Message* msg = new ::Message();
-//    msg->pif = 0x1412;
-//    msg->eif = 0x1212;
-//    msg->length = sizeof(::Message);
-//    msg->mid    = 0x12;
-
-//    brouter->post(CALLER Event::make(msg->mid, 1, msg, CALLER Error(MakeError(CALLER GenericError::timed_out))));
-//    brouter->post(CALLER Event::make(msg->mid, 0, msg, CALLER Error()));
-
-//    return 0;
 
     CALLER RouterPtr brouter = CALLER Router::create<BroadcastRouter>();
     CALLER RouterPtr trouter = CALLER Router::create<TemporaryRouter>();
     CALLER RouterPtr router  = CALLER Router::create<PersistenceRouter>();
 
-    auto r = CreateRouteFuncInvoker([](EventPtr e) {
-        std::cout << "proute: " << e->id() << '\n';
-    });
-
-    r->setID(0x13);
-    r->setSequenceNumberMask(0x00);
-
-    auto r2 = CreateRouteFuncInvoker([](EventPtr e) {
-        std::cout << "proute: " << e->id() << '\n';
-    });
-
-    r2->setID(0x12);
-    r2->setSequenceNumberMask(0x00);
-
-    router->add(r);
-    router->add(r2);
     brouter->add(router);
     brouter->add(trouter);
 
@@ -396,16 +415,119 @@ int main()
     rpipe->append(PipelineStage::create<MessageRouter>(trouter));
     rpipe->append(PipelineStage::create<MessageDelimiterBaseFrameEncoder>());
 
+    CALLER MessageFactoryPtr factory = CALLER MessageFactory::make();
+    factory->registerMessageMeta(CALLER MessageMeta::create<NewMessage>());
+
     rpipe->append(PipelineStage::create<MessageReadRouter>(brouter));
-    rpipe->append(PipelineStage::create<MessageDelimiterBaseFrameDecoder>());
+    rpipe->append(PipelineStage::create<MessageDelimiterBaseFrameDecoder>(factory));
 
     CALLER Endpoint endpoint;
     endpoint.setHost("127.0.0.1");
     endpoint.setPort("9097");
 
-    pipelineContext->connect(endpoint);
+    auto future = pipelineContext->connect(endpoint);
+
+    std::thread t1([future, pipelineContext]() mutable {
+        CALLER AsioExecutionContext executionContext;
+        CALLER ThreadExecutionContext tec(executionContext);
+        future.wait();
+
+        std::string echo;
+        std::cout << "enter echo: ";
+
+        while (std::cin >> echo) {
+
+            RefPtr< NewMessage > msg = NewRefPtr< NewMessage >();
+            msg->setPif(0x1412);
+            msg->setEif(0x1212);
+            msg->setName("hello: " + echo);
+
+            ::Request r;
+            r.object = msg;
+
+            auto now = std::chrono::steady_clock::now();
+            r.callback = [now](EventPtr ptr) {
+                auto end = std::chrono::steady_clock::now();
+                auto msg = CALLER any_cast<MessagePtr>(ptr->payload());
+                auto m   = StaticCastRefPtr<NewMessage>(msg);
+                std::cout << "recv message: " << m->getName().c_str() << ", ns: " << (end - now).count() << '\n';
+            };
+
+            pipelineContext->write(r, ByteBuffer(512));
+            std::cout << "enter echo: ";
+        }
+    });
 
     executionContext.start();
+
+    t1.join();
+    std::cout << ::count << '\n';
 #endif
     return 0;
+}
+
+uint16_t NewMessage::getPif() const
+{
+    return pif;
+}
+
+void NewMessage::setPif(const uint16_t &value)
+{
+    pif = value;
+}
+
+uint16_t NewMessage::getLength() const
+{
+    return length;
+}
+
+void NewMessage::setLength(const uint16_t &value)
+{
+    length = value;
+}
+
+uint16_t NewMessage::getMid() const
+{
+    return mid;
+}
+
+
+uint16_t NewMessage::getEif() const
+{
+    return eif;
+}
+
+void NewMessage::setEif(const uint16_t &value)
+{
+    eif = value;
+}
+
+uint16_t NewMessage::getAge() const
+{
+    return age;
+}
+
+void NewMessage::setAge(const uint16_t &value)
+{
+    age = value;
+}
+
+std::string NewMessage::getName() const
+{
+    return name;
+}
+
+void NewMessage::setName(const std::string &value)
+{
+    name = value;
+}
+
+uint16_t NewMessage::getSeq() const
+{
+return seq;
+}
+
+void NewMessage::setSeq(const uint16_t &value)
+{
+seq = value;
 }

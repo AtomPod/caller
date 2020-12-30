@@ -48,9 +48,10 @@ Future<void> AsioUdpSocketHandler::disconnect()
 
 Future<void> AsioUdpSocketHandler::close()
 {
-    FutureInterface<void> futureSender;
-    closeSocketWithState(futureSender, ConnectivityState::Shutdown);
-    return futureSender.future();
+//    FutureInterface<void> futureSender;
+    closeSocketWithState(_M_CloseFuture, ConnectivityState::Shutdown);
+//    return futureSender.future();
+    return _M_CloseFuture.future();
 }
 
 Future<size_t> AsioUdpSocketHandler::read(ByteBuffer buffer)
@@ -69,7 +70,7 @@ Future<size_t> AsioUdpSocketHandler::write(const ByteBuffer &buffer)
         return futureSender.future();
     }
 
-    _M_Socket.async_send(asio::const_buffer(buffer.data(), buffer.length()),
+    _M_Socket.async_send(asio::const_buffer(buffer.data(), buffer.readableLength()),
                       [buffer, futureSender, this](std::error_code ec, size_t length) mutable {
         if (!ec) {
             futureSender.reportResult(length);
@@ -84,6 +85,11 @@ Future<size_t> AsioUdpSocketHandler::write(const ByteBuffer &buffer)
 Executor *AsioUdpSocketHandler::executor()
 {
     return _M_ExecutionContext.executor();
+}
+
+Future<void> AsioUdpSocketHandler::closeFuture()
+{
+    return _M_CloseFuture.future();
 }
 
 void AsioUdpSocketHandler::resolverAddress(const Endpoint &endpoint, FutureInterface<void> futureSender)

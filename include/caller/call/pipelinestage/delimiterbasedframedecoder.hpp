@@ -6,7 +6,7 @@
 
 CALLER_BEGIN
 
-template<typename DelimiterType, typename LengthType>
+template<typename DelimiterType, typename LengthType, typename DataType>
 class CALLER_DLL_EXPORT DelimiterBasedFrameDecoder : public PipelineReadStage
 {
 public:
@@ -17,30 +17,38 @@ public:
                                  size_t bufferSize)
         : _M_MinLength(minLength) , _M_OffsetLength(lengthOffset),
           _M_LeftDelimiter(leftDelimiter), _M_RightDelimiter(rightDelimiter),
-          _M_RingBuffer(bufferSize) {}
+          _M_RingBuffer(bufferSize), _M_PackBuffer(bufferSize) {}
 
     virtual ~DelimiterBasedFrameDecoder() override{}
 public:
-    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) override {
+    virtual void handleRead(const PipelineContextPtr &context, const ByteBuffer &buffer, const any &object) override {
         UNUSED(object);
+
+        std::list<DataType> DataList;
 
         size_t totalWriteBytes = 0;
 
-        while (totalWriteBytes < buffer.length()) {
-            size_t writeBytes = _M_RingBuffer.put(reinterpret_cast<RingBuffer::Element*>(buffer.data() + totalWriteBytes),
-                                                  buffer.length() - totalWriteBytes);
+        while (totalWriteBytes < buffer.readableLength()) {
+            size_t writeBytes = _M_RingBuffer.put(reinterpret_cast<const RingBuffer::Element*>(buffer.data() + totalWriteBytes),
+                                                  buffer.readableLength() - totalWriteBytes);
             totalWriteBytes  += writeBytes;
 
             while (unpack(_M_PackBuffer)) {
-                any object = decode(context, _M_PackBuffer);
-                if (object.has_value()) {
-                    invokeReader(context, buffer, object);
+                DataType object = decode(context, _M_PackBuffer);
+                if (object) {
+                    DataList.push_back(object);
                 }
             }
         }
+
+        if (DataList.empty()) {
+            invokePipelineReadComplete(context);
+        } else {
+            invokeReader(context, buffer, DataList);
+        }
     }
 protected:
-    virtual any decode(PipelineContextPtr context, ByteBuffer pack) = 0;
+    virtual DataType decode(const PipelineContextPtr &context,  ByteBuffer pack) = 0;
 private:
     bool    unpack(ByteBuffer &buffer) {
         DelimiterType delimiter;
@@ -59,7 +67,6 @@ private:
                 continue;
             }
 
-
             // 如果大小不足最小长度，那么没有意义，不解析
             if (_M_RingBuffer.length() < _M_MinLength) {
                 return false;
@@ -70,7 +77,6 @@ private:
                                      sizeof(LengthType), sizeof(delimiter)) != sizeof(LengthType)) {
                  return false;
             }
-
 
             length = fromBigEndian(length);
 
@@ -95,8 +101,9 @@ private:
                 continue;
             }
 
-            buffer.resize(length);
-            _M_RingBuffer.take(reinterpret_cast<RingBuffer::Element*>(buffer.data()), buffer.length());
+            buffer.reset();
+            _M_RingBuffer.take(reinterpret_cast<RingBuffer::Element*>(buffer.data()), length);
+            buffer.setReadableLength(length);
             return true;
         }
     }

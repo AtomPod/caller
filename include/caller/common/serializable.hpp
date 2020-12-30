@@ -12,7 +12,7 @@ public:
     Serializable();
     virtual ~Serializable();
 public:
-    virtual     Error   serialize(ByteBuffer buffer)   const = 0;
+    virtual     Error   serialize(ByteBuffer &buffer)   const = 0;
     virtual     Error   deserialize(ByteBuffer buffer)       = 0;
 };
 

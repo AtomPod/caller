@@ -30,31 +30,31 @@ public:
     PipelineStage& operator=(const PipelineStage &) = delete;
     virtual ~PipelineStage() = default;
 public:
-    virtual void pipelineActive(PipelineContextPtr ctx)         {
+    virtual void pipelineActive(const PipelineContextPtr &ctx)         {
         invokePipelineActive(ctx);
     }
 
-    virtual void pipelineInactive(PipelineContextPtr ctx)       {
+    virtual void pipelineInactive(const PipelineContextPtr & ctx)       {
         invokePipelineInactive(ctx);
     }
 
-    virtual void pipelineWriteComplete(PipelineContextPtr ctx)  {
+    virtual void pipelineWriteComplete(const PipelineContextPtr & ctx)  {
         invokePipelineWriteComplete(ctx);
     }
 
-    virtual void pipelineReadComplete(PipelineContextPtr ctx)   {
+    virtual void pipelineReadComplete(const PipelineContextPtr & ctx)   {
         invokePipelineReadComplete(ctx);
     }
 
-    virtual void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) {
+    virtual void handleRead(const PipelineContextPtr &context, const ByteBuffer &buffer, const any &object) {
         invokeReader(context, buffer, object);
     }
 
-    virtual void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object) {
+    virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer & buffer, const any &object) {
         invokeWriter(context, buffer, object);
     }
 
-    virtual void causeException(PipelineContextPtr ctx, const std::exception &e) {
+    virtual void causeException(const PipelineContextPtr & ctx, const std::exception &e) {
         invokeCauseException(ctx, e);
     }
 public:
@@ -74,44 +74,105 @@ public:
 
 
 protected:
-    void invokePipelineActive(PipelineContextPtr ctx)         {
+    void invokePipelineActive(const PipelineContextPtr & ctx)         {
         if (auto next = nextStage(); next != nullptr) {
-            next->pipelineActive(ctx);
+            auto executor = next->executor();
+
+            if (executor == nullptr) {
+                next->pipelineActive(ctx);
+            } else {
+                executor->execute([next, ctx]() {
+                    next->pipelineActive(ctx);
+                });
+            }
         }
     }
 
-    void invokePipelineInactive(PipelineContextPtr ctx)       {
+    void invokePipelineInactive(const PipelineContextPtr & ctx)       {
         if (auto next = nextStage(); next != nullptr) {
-            next->pipelineInactive(ctx);
+            auto executor = next->executor();
+
+            if (executor == nullptr) {
+                next->pipelineInactive(ctx);
+            } else {
+                executor->execute([next, ctx]() {
+                     next->pipelineInactive(ctx);
+                });
+            }
         }
     }
-    void invokePipelineWriteComplete(PipelineContextPtr ctx)  {
+    void invokePipelineWriteComplete(const PipelineContextPtr & ctx)  {
         if (auto next = findWritableStage(); next != nullptr) {
-            next->pipelineWriteComplete(ctx);
+            auto executor = next->executor();
+
+            if (executor == nullptr) {
+                next->pipelineWriteComplete(ctx);
+            } else {
+                executor->execute([next, ctx]() {
+                     next->pipelineWriteComplete(ctx);
+                });
+            }
         }
     }
 
-    void invokePipelineReadComplete(PipelineContextPtr ctx)   {
+    void invokePipelineReadComplete(const PipelineContextPtr & ctx)   {
         if (auto next = findReadableStage(); next != nullptr) {
-            next->pipelineReadComplete(ctx);
+            auto executor = next->executor();
+
+            if (executor == nullptr) {
+                next->pipelineReadComplete(ctx);
+            } else {
+                executor->execute([next, ctx]() {
+                     next->pipelineReadComplete(ctx);
+                });
+            }
         }
     }
 
-    void invokeCauseException(PipelineContextPtr ctx, const std::exception &e) {
+    void invokeCauseException(const PipelineContextPtr & ctx, const std::exception &e) {
         if (auto next = nextStage(); next != nullptr) {
-            next->causeException(ctx, e);
+            auto executor = next->executor();
+
+            if (executor == nullptr) {
+                next->causeException(ctx, e);
+            } else {
+                std::exception_ptr eptr = std::make_exception_ptr(e);
+                executor->execute([next, ctx, eptr]() {
+                    try {
+                       std::rethrow_exception(eptr);
+                    } catch (const std::exception &e) {
+                       next->causeException(ctx, e);
+                    }
+                });
+            }
         }
     }
 
-    void invokeWriter(PipelineContextPtr context, ByteBuffer buffer, const any &object) {
+    void invokeWriter(const PipelineContextPtr & ctx, ByteBuffer & buffer, const any &object) {
         if (auto next = findWritableStage(); next != nullptr) {
-            next->handleWrite(context, buffer, object);
+            auto executor = next->executor();
+
+            if (executor == nullptr) {
+                next->handleWrite(ctx, buffer, object);
+            } else {
+                executor->execute([next, ctx]() {
+                    next->pipelineInactive(ctx);
+                });
+            }
         }
     }
 
-    void invokeReader(PipelineContextPtr context, ByteBuffer buffer, const any &object) {
+    void invokeReader(const PipelineContextPtr & ctx, const ByteBuffer & buffer, const any &object) {
         if (auto next = findReadableStage(); next != nullptr) {
-            next->handleRead(context, buffer, object);
+            auto executor = next->executor();
+
+            if (executor == nullptr) {
+                next->handleRead(ctx, buffer, object);
+            } else {
+                executor->execute([next, ctx]() {
+                     next->pipelineInactive(ctx);
+                });
+            }
         }
     }
 protected:

@@ -18,6 +18,7 @@ AsioTcpSocketHandler::~AsioTcpSocketHandler()
 
 Future<void> AsioTcpSocketHandler::bind(const Endpoint &endpoint)
 {
+
     return Future<void>();
 }
 
@@ -50,9 +51,10 @@ Future<void> AsioTcpSocketHandler::disconnect()
 
 Future<void> AsioTcpSocketHandler::close()
 {
-    FutureInterface<void> futureSender;
-    closeSocketWithState(futureSender, ConnectivityState::Shutdown);
-    return futureSender.future();
+//    FutureInterface<void> futureSender;
+    closeSocketWithState(_M_CloseFuture, ConnectivityState::Shutdown);
+//    return futureSender.future();
+    return _M_CloseFuture.future();
 }
 
 Future<size_t> AsioTcpSocketHandler::read(ByteBuffer buffer)
@@ -71,7 +73,7 @@ Future<size_t> AsioTcpSocketHandler::write(const ByteBuffer &buffer)
         return futureSender.future();
     }
 
-    asio::async_write(_M_Socket, asio::const_buffer(buffer.data(), buffer.length()),
+    asio::async_write(_M_Socket, asio::const_buffer(buffer.data(), buffer.readableLength()),
                       asio::transfer_all(),
                       [buffer, futureSender, this](std::error_code ec, size_t length) mutable {
         if (!ec) {
@@ -87,6 +89,11 @@ Future<size_t> AsioTcpSocketHandler::write(const ByteBuffer &buffer)
 Executor *AsioTcpSocketHandler::executor()
 {
     return _M_ExecutionContext.executor();
+}
+
+Future<void> AsioTcpSocketHandler::closeFuture()
+{
+    return _M_CloseFuture.future();
 }
 
 void AsioTcpSocketHandler::resolverAddress(const Endpoint &endpoint, FutureInterface<void> futureSender)

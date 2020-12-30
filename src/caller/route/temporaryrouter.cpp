@@ -30,7 +30,7 @@ void TemporaryRouter::post(const EventPtr &event)
 bool TemporaryRouter::add(RoutePtr route)
 {
     auto where = std::find_if(_M_Routes.begin(), _M_Routes.end(), [route](RoutePtr compare) {
-         if (route->id() == compare->id()) {
+         if (route->id() == compare->id() && compare->sequenceNumber() == route->sequenceNumber()) {
              return true;
          }
          return false;

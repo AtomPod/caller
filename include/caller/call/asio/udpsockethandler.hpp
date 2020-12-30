@@ -29,6 +29,7 @@ public:
     virtual Future<size_t>      read(ByteBuffer buffer)             override;
     virtual Future<size_t>      write(const ByteBuffer &buffer)     override;
     virtual Executor*           executor()                          override;
+    virtual Future<void>        closeFuture()                       override;
 protected:
     void    resolverAddress(const Endpoint &endpoint, FutureInterface<void> futureSender);
     void    resetSocket();
@@ -43,6 +44,7 @@ private:
     EndpointList                _M_EndpointList;
     EndpointResolver            _M_Resolver;
     ByteBuffer                  _M_DataBuffer;
+    FutureInterface<void>       _M_CloseFuture;
 };
 
 CALLER_END

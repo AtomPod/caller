@@ -18,12 +18,12 @@ public:
     PipelineTypedWriteStage() = default;
     virtual ~PipelineTypedWriteStage() override = default;
 public:
-    virtual void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object) override final {
+    virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer & buffer, const any &object) override final {
         T typedObject = CALLER any_cast<T>(object);
         handleTypedWrite(context, buffer, typedObject);
     }
 protected:
-    virtual void handleTypedWrite(PipelineContextPtr context, ByteBuffer buffer, const T &object) = 0;
+    virtual void handleTypedWrite(const PipelineContextPtr &context, ByteBuffer &buffer, const T &object) = 0;
 };
 
 template<typename T>
@@ -32,12 +32,12 @@ public:
     PipelineTypedWriteStage() = default;
     virtual ~PipelineTypedWriteStage() override = default;
 public:
-    virtual void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object) override final {
+    virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer & buffer, const any &object) override final {
         T* typedObject = CALLER any_cast<T*>(object);
         handleTypedWrite(context, buffer, typedObject);
     }
 protected:
-    virtual void handleTypedWrite(PipelineContextPtr context, ByteBuffer buffer, T *object) = 0;
+    virtual void handleTypedWrite(const PipelineContextPtr &context, ByteBuffer & buffer, T *object) = 0;
 };
 
 
