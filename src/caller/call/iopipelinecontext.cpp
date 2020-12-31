@@ -99,7 +99,7 @@ PipelineContextPtr IOPipelineContext::make(IOHandler *handler)
 
 IOPipelineContext::~IOPipelineContext()
 {
-
+    delete _M_Handler;
 }
 
 Future<void> IOPipelineContext::connect(const Endpoint &endpoint)
