@@ -2,6 +2,7 @@
 #include <caller/call/pipelinewritestage.hpp>
 #include <caller/call/pipelinereadstage.hpp>
 #include <caller/async/futureeventlistener.hpp>
+#include <caller/call/socketeventrequest.hpp>
 
 CALLER_BEGIN
 
@@ -67,13 +68,23 @@ public:
 
     virtual void handleWrite(const PipelineContextPtr & context, ByteBuffer &buffer, const any &object) override {
         UNUSED(object);
+        SocketEventRequest *socketEventListener = nullptr;
+
+        try {
+          socketEventListener = CALLER any_cast<SocketEventRequest*>(object);
+        }  catch (const std::exception &) {
+          socketEventListener = nullptr;
+        }
 
         Future<size_t> future = _M_Handler->write(buffer);
         future.addListener(CreateFutureEventListenerFunction(
-            [context](const FutureEvent &e) mutable {
+            [context, socketEventListener](const FutureEvent &e) mutable {
 
                 if (e.isFinished()) {
                     context->notifyWriteComplete();
+                    if (socketEventListener != nullptr) {
+                      socketEventListener->writeComplete(e.result<size_t>());
+                    }
                 } else {
                     if (e.isError()) {
                         Error ec = e.errorCode();
@@ -82,8 +93,14 @@ public:
                             ec != GenericError::bad_file_descriptor) {
                             context->notifyInactive();
                         }
+
+                        if (socketEventListener != nullptr) {
+                          socketEventListener->error(SocketEventFuncRequest::ERROR_TYPE_WRITE, ec);
+                        }
                     }
                 }
+
+                delete socketEventListener;
         }));
     }
 

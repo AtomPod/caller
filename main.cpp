@@ -23,6 +23,7 @@
 #include <caller/async/futureinterface.hpp>
 #include <caller/async/futureeventlistener.hpp>
 #include <asio/posix/stream_descriptor.hpp>
+#include <caller/call/socketeventrequest.hpp>
 
 using namespace std;
 
@@ -220,13 +221,17 @@ public:
     virtual void handleTypedWrite(const PipelineContextPtr & context, ByteBuffer & buffer, const ::Request &object) override {
         static int seq = 1;
         object.object->setSequenceNumber(seq++);
-        RoutePtr route = CreateRouteFuncInvoker(object.callback);
 
-        route->setID(object.object->getMid());
-        route->setSequenceNumber(object.object->getSeq());
-
-        _M_appendRouter->add(route);
-        invokeWriter(context, buffer, object.object);
+        RouterPtr router = _M_appendRouter;
+        SocketEventFuncRequest *listener = new SocketEventFuncRequest([router, object](int64_t bytes) {
+          std::cout << "add event\n";
+          RoutePtr route = CreateRouteFuncInvoker(object.callback);
+          route->setID(object.object->getMid());
+          route->setSequenceNumber(object.object->getSeq());
+          router->add(route);
+        }, nullptr, nullptr);
+        listener->setExtraData(object.object);
+        invokeWriter(context, buffer, static_cast<SocketEventRequest*>(listener));
     }
 
 private:
@@ -244,7 +249,6 @@ public:
             EventPtr e = Event::make(m->id(), m->sequenceNumber(), m);
             _M_runRouter->post(e);
         }
-
 
         invokeReader(context, buffer, msg);
     }
@@ -285,10 +289,9 @@ protected:
             }
         }
         return nullptr;
-
     }
 
-    virtual void causeException(const PipelineContextPtr & ctx, const std::exception &e) {
+    virtual void causeException(const PipelineContextPtr & ctx, const std::exception &e) override {
         std::cout << "cause exeception: " << e.what() << '\n';
     }
 private:
@@ -329,7 +332,7 @@ public:
 };
 
 
-class MessageDelimiterBaseFrameEncoder : public DelimiterBasedFrameEncoder< RefPtr<NewMessage> >
+class MessageDelimiterBaseFrameEncoder : public DelimiterBasedFrameEncoder< SocketEventRequest* >
 {
 public:
     MessageDelimiterBaseFrameEncoder() {
@@ -337,7 +340,8 @@ public:
     }
 public:
 
-    virtual bool encode(const PipelineContextPtr & context,  RefPtr<NewMessage> object , ByteBuffer &pack) override {
+    virtual bool encode(const PipelineContextPtr & context,  SocketEventRequest* request , ByteBuffer &pack) override {
+        RefPtr<NewMessage> object = request->typedExtraData<RefPtr<NewMessage>>();
         std::chrono::steady_clock::time_point beg = std::chrono::steady_clock::now();
 
         object->serialize(pack);
@@ -406,7 +410,7 @@ int main()
     brouter->add(router);
     brouter->add(trouter);
 
-    CALLER AsioUdpSocketHandler* socketHandler = new CALLER AsioUdpSocketHandler(executionContext);
+    CALLER IOHandler* socketHandler = new CALLER AsioUdpSocketHandler(executionContext);
     CALLER PipelineContextPtr pipelineContext = CALLER IOPipelineContext::make(socketHandler);
 
     auto rpipe = pipelineContext->pipeline();

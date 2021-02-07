@@ -14,6 +14,7 @@ SOURCES += \
         src/caller/call/iopipelinecontext.cpp \
         src/caller/call/pipelinewritereadstage.cpp \
         src/caller/async/futureeventlistener.cpp \
+        src/caller/call/socketeventrequest.cpp \
         src/caller/message/typedmessage.cpp \
         src/caller/route/event.cpp \
         src/caller/call/asio/tcpsockethandler.cpp \
@@ -69,6 +70,7 @@ HEADERS += \
     include/caller/call/pipelinestage/delimiterbasedframeencoder.hpp \
     include/caller/call/pipelinewritereadstage.hpp \
     include/caller/call/pipelinewritestage.hpp \
+    include/caller/call/socketeventrequest.hpp \
     include/caller/call/sockethandler.hpp \
     include/caller/common/error.hpp \
     include/caller/common/refptr.hpp \

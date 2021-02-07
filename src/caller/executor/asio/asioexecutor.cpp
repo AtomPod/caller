@@ -38,7 +38,7 @@ AsioExecutor::CancelFunc AsioExecutor::execute(Executor::Task task, const std::c
 
 AsioExecutor::~AsioExecutor()
 {
-
+  _M_Context.stop();
 }
 
 ExecutionContext *AsioExecutor::context()
