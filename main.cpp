@@ -431,10 +431,15 @@ int main()
 
     auto future = pipelineContext->connect(endpoint);
 
+
+
     std::thread t1([future, pipelineContext]() mutable {
-        CALLER AsioExecutionContext executionContext;
-        CALLER ThreadExecutionContext tec(executionContext);
+//        CALLER AsioExecutionContext executionContext;
+//        CALLER ThreadExecutionContext tec(executionContext);
+//        CALLER SingleThreadExecutor<AsioExecutionContext> executor;
+//        CALLER ThreadExecutionContext tec(*executor.context());
         future.wait();
+//        std::cout << "start run context in thread:" << executor.id() << '\n';
 
         std::string echo;
         std::cout << "enter echo: ";
@@ -455,10 +460,45 @@ int main()
                 auto msg = CALLER any_cast<MessagePtr>(ptr->payload());
                 auto m   = StaticCastRefPtr<NewMessage>(msg);
                 std::cout << "recv message: " << m->getName().c_str() << ", ns: " << (end - now).count() << '\n';
+                std::cout << "running at thread: " << std::this_thread::get_id() << '\n';
             };
 
             pipelineContext->write(r, ByteBuffer(512));
             std::cout << "enter echo: ";
+        }
+    });
+
+    std::thread t12([future, pipelineContext]() mutable {
+//        CALLER AsioExecutionContext executionContext;
+//        CALLER ThreadExecutionContext tec(executionContext);
+//        CALLER SingleThreadExecutor<AsioExecutionContext> executor;
+//        CALLER ThreadExecutionContext tec(*executor.context());
+        future.wait();
+//        std::cout << "start run context in thread:" << executor.id() << '\n';
+
+        std::string echo = "atomic";
+
+        while (true) {
+
+            RefPtr< NewMessage > msg = NewRefPtr< NewMessage >();
+            msg->setPif(0x1412);
+            msg->setEif(0x1212);
+            msg->setName("hello: " + echo);
+
+            ::Request r;
+            r.object = msg;
+
+            auto now = std::chrono::steady_clock::now();
+            r.callback = [now](EventPtr ptr) {
+                auto end = std::chrono::steady_clock::now();
+                auto msg = CALLER any_cast<MessagePtr>(ptr->payload());
+                auto m   = StaticCastRefPtr<NewMessage>(msg);
+                std::cout << "recv message: " << m->getName().c_str() << ", ns: " << (end - now).count() << '\n';
+                std::cout << "running at thread: " << std::this_thread::get_id() << '\n';
+            };
+
+            pipelineContext->write(r, ByteBuffer(512));
+            std::this_thread::sleep_for(std::chrono::milliseconds(300));
         }
     });
 

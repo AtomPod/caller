@@ -19,6 +19,8 @@ template<typename ExecutionContextT,
 class SingleThreadExecutor : public Executor
 {
 public:
+    typedef std::thread::id ID;
+public:
     SingleThreadExecutor() : _M_ExecutionContext(new ExecutionContextT()) {
         _M_Thread = std::thread([this]() {
             this->run();
@@ -49,6 +51,10 @@ public:
 
     bool isClosed() {
         return _M_Closed.load(std::memory_order_acquire);
+    }
+
+    ID id() {
+      return _M_Thread.get_id();
     }
 public:
     virtual void       execute(Task task)    override {
