@@ -212,18 +212,20 @@ struct Request {
     std::function<void(EventPtr)> callback;
 };
 
-class MessageRouter : public PipelineTypedWriteStage<::Request> {
+class MessageRouter : public PipelineMultiTypeWriteStage<::Request, SocketEventMonitoredRequestPtr > {
 public:
     MessageRouter(RouterPtr append) : _M_appendRouter(append) {
 
     }
 
-    virtual void handleTypedWrite(const PipelineContextPtr & context, ByteBuffer & buffer, const ::Request &object) override {
+    virtual void handleTypeWrite(const PipelineContextPtr & context, ByteBuffer & buffer, const ::Request &object) override {
         static int seq = 1;
         object.object->setSequenceNumber(seq++);
 
+        std::cout << "invoke request\n";
+
         RouterPtr router = _M_appendRouter;
-        SocketEventFuncRequest *listener = new SocketEventFuncRequest([router, object](int64_t bytes) {
+        SocketEventFuncRequestPtr listener = SocketEventFuncRequest::create([router, object](int64_t bytes) {
           std::cout << "add event\n";
           RoutePtr route = CreateRouteFuncInvoker(object.callback);
           route->setID(object.object->getMid());
@@ -231,20 +233,51 @@ public:
           router->add(route);
         }, nullptr, nullptr);
         listener->setExtraData(object.object);
-        invokeWriter(context, buffer, static_cast<SocketEventRequest*>(listener));
+        invokeWriter(context, buffer,  StaticCastRefPtr<SocketEventRequest>(listener));
     }
 
+    virtual void handleTypeWrite(const PipelineContextPtr & context, ByteBuffer & buffer,
+                                 const SocketEventMonitoredRequestPtr &request) override {
+      static int seq = 1;
+      auto object = request->typedExtraData<::Request>();
+      object.object->setSequenceNumber(seq++);
+
+      RouterPtr router = _M_appendRouter;
+      request->writeCompleteFuture().addListener(
+        CreateFutureEventListenerFunction(
+              [router, object](FutureEvent e) {
+                RoutePtr route = CreateRouteFuncInvoker(object.callback);
+                route->setID(object.object->getMid());
+                route->setSequenceNumber(object.object->getSeq());
+                router->add(route);
+              }
+        )
+      );
+      request->setExtraData(object.object);
+      std::cout << "add socket event\n";
+
+//      RouterPtr router = _M_appendRouter;
+//      SocketEventFuncRequest *listener = new SocketEventFuncRequest([router, object](int64_t bytes) {
+//        std::cout << "add event\n";
+//        RoutePtr route = CreateRouteFuncInvoker(object.callback);
+//        route->setID(object.object->getMid());
+//        route->setSequenceNumber(object.object->getSeq());
+//        router->add(route);
+//      }, nullptr, nullptr);
+//      listener->setExtraData(object.object);
+      invokeWriter(context, buffer, StaticCastRefPtr<SocketEventRequest>(request));
+  }
 private:
     RouterPtr _M_appendRouter;
 };
 
-class MessageReadRouter : public PipelineTypedReadStage< std::list<MessagePtr> > {
+class MessageReadRouter : public PipelineTypeReadStage< std::vector<MessagePtr> > {
 public:
     MessageReadRouter(RouterPtr run) : _M_runRouter(run) {
 
     }
 
-    virtual void handleTypedRead(const PipelineContextPtr & context, const ByteBuffer & buffer, const std::list<MessagePtr> &msg) override {
+    virtual void handleTypeRead(const PipelineContextPtr & context, const ByteBuffer & buffer, const std::vector<MessagePtr> &msg) override {
         for (auto m : msg) {
             EventPtr e = Event::make(m->id(), m->sequenceNumber(), m);
             _M_runRouter->post(e);
@@ -257,7 +290,7 @@ private:
     RouterPtr _M_runRouter;
 };
 
-class MessageDelimiterBaseFrameDecoder : public DelimiterBasedFrameDecoder<uint16_t, uint16_t, MessagePtr>
+class MessageDelimiterBaseFrameDecoder : public DelimiterBasedFrameDecoder<uint16_t, uint16_t, MessagePtr, std::vector<MessagePtr>>
 {
 public:
     MessageDelimiterBaseFrameDecoder(MessageFactoryPtr factory) : DelimiterBasedFrameDecoder(8, 2, 0x1412, 0x1212, 4096), _M_MsgFactory(factory) {
@@ -299,10 +332,10 @@ private:
 };
 
 
-class MessagePrinter : public PipelineTypedReadStage<::Message*>
+class MessagePrinter : public PipelineTypeReadStage<::Message*>
 {
 public:
-    void handleTypedRead(const PipelineContextPtr &  context, const ByteBuffer &buffer, ::Message *object) {
+    void handleTypeRead(const PipelineContextPtr &  context, const ByteBuffer &buffer, ::Message *object) {
         std::cout << "message: " << object->mid << '\n';
 
         if (nextStage()) {
@@ -332,7 +365,7 @@ public:
 };
 
 
-class MessageDelimiterBaseFrameEncoder : public DelimiterBasedFrameEncoder< SocketEventRequest* >
+class MessageDelimiterBaseFrameEncoder : public DelimiterBasedFrameEncoder< SocketEventRequestPtr >
 {
 public:
     MessageDelimiterBaseFrameEncoder() {
@@ -340,7 +373,7 @@ public:
     }
 public:
 
-    virtual bool encode(const PipelineContextPtr & context,  SocketEventRequest* request , ByteBuffer &pack) override {
+    virtual bool encode(const PipelineContextPtr & context,  SocketEventRequestPtr request , ByteBuffer &pack) override {
         RefPtr<NewMessage> object = request->typedExtraData<RefPtr<NewMessage>>();
         std::chrono::steady_clock::time_point beg = std::chrono::steady_clock::now();
 
@@ -399,7 +432,6 @@ int main()
 {
 #if 1
 
-
     CALLER AsioExecutionContext executionContext;
     CALLER ThreadExecutionContext tec(executionContext);
 
@@ -430,8 +462,6 @@ int main()
     endpoint.setPort("9097");
 
     auto future = pipelineContext->connect(endpoint);
-
-
 
     std::thread t1([future, pipelineContext]() mutable {
 //        CALLER AsioExecutionContext executionContext;
@@ -485,6 +515,8 @@ int main()
             msg->setEif(0x1212);
             msg->setName("hello: " + echo);
 
+            SocketEventMonitoredRequestPtr eventRequest = SocketEventMonitoredRequest::create();
+
             ::Request r;
             r.object = msg;
 
@@ -496,8 +528,8 @@ int main()
                 std::cout << "recv message: " << m->getName().c_str() << ", ns: " << (end - now).count() << '\n';
                 std::cout << "running at thread: " << std::this_thread::get_id() << '\n';
             };
-
-            pipelineContext->write(r, ByteBuffer(512));
+            eventRequest->setExtraData(r);
+            pipelineContext->write(eventRequest, ByteBuffer(512));
             std::this_thread::sleep_for(std::chrono::milliseconds(300));
         }
     });

@@ -12,31 +12,31 @@ public:
 };
 
 template<typename T>
-class PipelineTypedReadStage : public PipelineReadStage {
+class PipelineTypeReadStage : public PipelineReadStage {
 public:
-    PipelineTypedReadStage() = default;
-    virtual ~PipelineTypedReadStage() override = default;
+    PipelineTypeReadStage() = default;
+    virtual ~PipelineTypeReadStage() override = default;
 public:
     virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const any &object) override final {
         const T* typedObject = CALLER any_cast<T>(&object);
-        handleTypedRead(context, buffer, *typedObject);
+        handleTypeRead(context, buffer, *typedObject);
     }
 protected:
-    virtual void handleTypedRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const T &object) = 0;
+    virtual void handleTypeRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const T &object) = 0;
 };
 
 template<typename T>
-class CALLER_DLL_EXPORT PipelineTypedReadStage<T*> : public PipelineReadStage {
+class CALLER_DLL_EXPORT PipelineTypeReadStage<T*> : public PipelineReadStage {
 public:
-    PipelineTypedReadStage() = default;
-    virtual ~PipelineTypedReadStage() override = default;
+    PipelineTypeReadStage() = default;
+    virtual ~PipelineTypeReadStage() override = default;
 public:
     virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const any &object) override final {
         T* typedObject = CALLER any_cast<T*>(object);
-        handleTypedRead(context, buffer, typedObject);
+        handleTypeRead(context, buffer, typedObject);
     }
 protected:
-    virtual void handleTypedRead(const PipelineContextPtr& context, const ByteBuffer& buffer, T *object) = 0;
+    virtual void handleTypeRead(const PipelineContextPtr& context, const ByteBuffer& buffer, T *object) = 0;
 };
 
 

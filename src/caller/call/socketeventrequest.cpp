@@ -15,6 +15,14 @@ SocketEventRequest::~SocketEventRequest()
 
 SocketEventRequestBase::SocketEventRequestBase() {}
 
+SocketEventFuncRequestPtr SocketEventFuncRequest::create(const WriteCallback &writeCallback,
+                                                         const ReadCallback &readCallback,
+                                                         const ErrorCallback &errorCallback,
+                                                         ExecutionContext *executionContext)
+{
+  return NewRefPtr<SocketEventFuncRequest>(writeCallback, readCallback, errorCallback, executionContext);
+}
+
 SocketEventFuncRequest::SocketEventFuncRequest(const SocketEventFuncRequest::WriteCallback &writeCallback,
                                                  const SocketEventFuncRequest::ReadCallback &readCallback,
                                                  const SocketEventFuncRequest::ErrorCallback &errorCallback,
@@ -27,6 +35,16 @@ SocketEventFuncRequest::SocketEventFuncRequest(const SocketEventFuncRequest::Wri
   if (_M_ExecutionContext == nullptr) {
     _M_ExecutionContext = ThreadExecutionContext::executionContext();
   }
+}
+
+SocketEventMonitoredRequestPtr SocketEventMonitoredRequest::create()
+{
+  return NewRefPtr<SocketEventMonitoredRequest>();
+}
+
+SocketEventMonitoredRequest::SocketEventMonitoredRequest()
+{
+
 }
 
 CALLER_END

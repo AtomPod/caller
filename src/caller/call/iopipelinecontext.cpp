@@ -68,10 +68,10 @@ public:
 
     virtual void handleWrite(const PipelineContextPtr & context, ByteBuffer &buffer, const any &object) override {
         UNUSED(object);
-        SocketEventRequest *socketEventListener = nullptr;
+        SocketEventRequestPtr socketEventListener = nullptr;
 
         try {
-          socketEventListener = CALLER any_cast<SocketEventRequest*>(object);
+          socketEventListener = CALLER any_cast<SocketEventRequestPtr>(object);
         }  catch (const std::exception &) {
           socketEventListener = nullptr;
         }
@@ -99,8 +99,6 @@ public:
                         }
                     }
                 }
-
-                delete socketEventListener;
         }));
     }
 

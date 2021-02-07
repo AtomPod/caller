@@ -6,7 +6,7 @@
 
 CALLER_BEGIN
 
-template<typename DelimiterType, typename LengthType, typename DataType>
+template<typename DelimiterType, typename LengthType, typename DataType, typename Container = std::list<DataType>>
 class CALLER_DLL_EXPORT DelimiterBasedFrameDecoder : public PipelineReadStage
 {
 public:
@@ -24,7 +24,7 @@ public:
     virtual void handleRead(const PipelineContextPtr &context, const ByteBuffer &buffer, const any &object) override {
         UNUSED(object);
 
-        std::list<DataType> DataList;
+        Container DataList;
 
         size_t totalWriteBytes = 0;
 

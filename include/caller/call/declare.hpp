@@ -21,6 +21,15 @@ typedef RefPtr<Pipeline> PipelinePtr;
 class PipelineContext;
 typedef RefPtr<PipelineContext> PipelineContextPtr;
 
+class SocketEventRequest;
+typedef RefPtr<SocketEventRequest> SocketEventRequestPtr;
+
+class SocketEventFuncRequest;
+typedef RefPtr<SocketEventFuncRequest>	SocketEventFuncRequestPtr;
+
+class SocketEventMonitoredRequest;
+typedef RefPtr<SocketEventMonitoredRequest> SocketEventMonitoredRequestPtr;
+
 CALLER_END
 
 #endif // CALLER_DECLARE_HPP
