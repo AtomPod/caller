@@ -95,42 +95,9 @@ class SocketEventFuncRequest : public SocketEventRequestBase {
                           const ErrorCallback &errorCallback,
                           ExecutionContext *executionContext = nullptr);
  public:
-  virtual void writeComplete(int64_t bytes) override {
-    if (_M_WriteCallback != nullptr) {
-      if (_M_ExecutionContext != nullptr) {
-        WriteCallback callback = _M_WriteCallback;
-        _M_ExecutionContext->executor()->execute([callback, bytes]() {
-          callback(bytes);
-        });
-      } else {
-        _M_WriteCallback(bytes);
-      }
-    }
-  }
-  virtual void readComplete(int64_t bytes) override {
-    if (_M_ReadCallback != nullptr) {
-      if (_M_ExecutionContext != nullptr) {
-        ReadCallback callback = _M_ReadCallback;
-        _M_ExecutionContext->executor()->execute([callback, bytes]() {
-          callback(bytes);
-        });
-      } else {
-        _M_ReadCallback(bytes);
-      }
-    }
-  }
-  virtual void error(const ErrorType &errType, Error e) override {
-    if (_M_ErrorCallback != nullptr) {
-      if (_M_ExecutionContext != nullptr) {
-        ErrorCallback callback = _M_ErrorCallback;
-        _M_ExecutionContext->executor()->execute([callback, errType, e]() {
-          callback(errType, e);
-        });
-      } else {
-        _M_ErrorCallback(errType, e);
-      }
-    }
-  }
+  virtual void writeComplete(int64_t bytes) override;
+  virtual void readComplete(int64_t bytes) override;
+  virtual void error(const ErrorType &errType, Error e) override;
  private:
   ExecutionContext *_M_ExecutionContext;
   WriteCallback _M_WriteCallback;

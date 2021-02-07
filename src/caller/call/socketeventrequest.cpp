@@ -37,6 +37,45 @@ SocketEventFuncRequest::SocketEventFuncRequest(const SocketEventFuncRequest::Wri
   }
 }
 
+void SocketEventFuncRequest::writeComplete(int64_t bytes) {
+  if (_M_WriteCallback != nullptr) {
+    if (_M_ExecutionContext != nullptr) {
+      WriteCallback callback = _M_WriteCallback;
+      _M_ExecutionContext->executor()->execute([callback, bytes]() {
+        callback(bytes);
+      });
+    } else {
+      _M_WriteCallback(bytes);
+    }
+  }
+}
+
+void SocketEventFuncRequest::readComplete(int64_t bytes) {
+  if (_M_ReadCallback != nullptr) {
+    if (_M_ExecutionContext != nullptr) {
+      ReadCallback callback = _M_ReadCallback;
+      _M_ExecutionContext->executor()->execute([callback, bytes]() {
+        callback(bytes);
+      });
+    } else {
+      _M_ReadCallback(bytes);
+    }
+  }
+}
+
+void SocketEventFuncRequest::error(const SocketEventRequest::ErrorType &errType, Error e) {
+  if (_M_ErrorCallback != nullptr) {
+    if (_M_ExecutionContext != nullptr) {
+      ErrorCallback callback = _M_ErrorCallback;
+      _M_ExecutionContext->executor()->execute([callback, errType, e]() {
+        callback(errType, e);
+      });
+    } else {
+      _M_ErrorCallback(errType, e);
+    }
+  }
+}
+
 SocketEventMonitoredRequestPtr SocketEventMonitoredRequest::create()
 {
   return NewRefPtr<SocketEventMonitoredRequest>();
