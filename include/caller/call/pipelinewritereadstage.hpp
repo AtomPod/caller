@@ -18,12 +18,12 @@ public:
     PipelineTypedWriteReadStage() : PipelineStage(StageTypeBoth) {}
     virtual ~PipelineTypedWriteReadStage() override = default;
 public:
-    virtual void handleWrite(const PipelineContextPtr& context, ByteBuffer& buffer, const any &object) override final {
-        WriteType typedObject = CALLER any_cast<WriteType>(object);
+    virtual void handleWrite(const PipelineContextPtr& context, ByteBuffer& buffer, const Any &object) override final {
+        WriteType typedObject = CALLER AnyCast<WriteType>(object);
         handleTypedWrite(context, buffer, typedObject);
     }
-    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const any &object) override final {
-        ReadType typedObject = CALLER any_cast<ReadType>(object);
+    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const Any &object) override final {
+        ReadType typedObject = CALLER AnyCast<ReadType>(object);
         handleTypedRead(context, buffer, typedObject);
     }
 protected:
@@ -38,12 +38,12 @@ public:
     PipelineTypedWriteReadStage() : PipelineStage(StageTypeBoth) {}
     virtual ~PipelineTypedWriteReadStage() override = default;
 public:
-    virtual void handleWrite(const PipelineContextPtr& context, ByteBuffer& buffer, const any &object) override final {
-        WriteType *typedObject = CALLER any_cast<WriteType*>(object);
+    virtual void handleWrite(const PipelineContextPtr& context, ByteBuffer& buffer, const Any &object) override final {
+        WriteType *typedObject = CALLER AnyCast<WriteType*>(object);
         handleTypedWrite(context, buffer, typedObject);
     }
-    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const any &object) override final {
-        ReadType typedObject = CALLER any_cast<ReadType>(object);
+    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const Any &object) override final {
+        ReadType typedObject = CALLER AnyCast<ReadType>(object);
         handleTypedRead(context, buffer, typedObject);
     }
 protected:
@@ -59,12 +59,12 @@ public:
     PipelineTypedWriteReadStage() : PipelineStage(StageTypeBoth) {}
     virtual ~PipelineTypedWriteReadStage() override = default;
 public:
-    virtual void handleWrite(const PipelineContextPtr& context, ByteBuffer& buffer, const any &object) override final {
-        WriteType typedObject = CALLER any_cast<WriteType>(object);
+    virtual void handleWrite(const PipelineContextPtr& context, ByteBuffer& buffer, const Any &object) override final {
+        WriteType typedObject = CALLER AnyCast<WriteType>(object);
         handleTypedWrite(context, buffer, typedObject);
     }
-    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const any &object) override final {
-        ReadType *typedObject = CALLER any_cast<ReadType*>(object);
+    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const Any &object) override final {
+        ReadType *typedObject = CALLER AnyCast<ReadType*>(object);
         handleTypedRead(context, buffer, typedObject);
     }
 protected:
@@ -80,12 +80,12 @@ public:
     PipelineTypedWriteReadStage() : PipelineStage(StageTypeBoth) {}
     virtual ~PipelineTypedWriteReadStage() override = default;
 public:
-    virtual void handleWrite(const PipelineContextPtr& context, ByteBuffer& buffer, const any &object) override final {
-        WriteType *typedObject = CALLER any_cast<WriteType*>(object);
+    virtual void handleWrite(const PipelineContextPtr& context, ByteBuffer& buffer, const Any &object) override final {
+        WriteType *typedObject = CALLER AnyCast<WriteType*>(object);
         handleTypedWrite(context, buffer, typedObject);
     }
-    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const any &object) override final {
-        ReadType *typedObject = CALLER any_cast<ReadType*>(object);
+    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const Any &object) override final {
+        ReadType *typedObject = CALLER AnyCast<ReadType*>(object);
         handleTypedRead(context, buffer, typedObject);
     }
 protected:

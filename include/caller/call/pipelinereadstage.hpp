@@ -17,8 +17,8 @@ public:
     PipelineTypeReadStage() = default;
     virtual ~PipelineTypeReadStage() override = default;
 public:
-    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const any &object) override final {
-        const T* typedObject = CALLER any_cast<T>(&object);
+    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const Any &object) override final {
+        const T* typedObject = CALLER AnyCast<T>(&object);
         handleTypeRead(context, buffer, *typedObject);
     }
 protected:
@@ -31,8 +31,8 @@ public:
     PipelineTypeReadStage() = default;
     virtual ~PipelineTypeReadStage() override = default;
 public:
-    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const any &object) override final {
-        T* typedObject = CALLER any_cast<T*>(object);
+    virtual void handleRead(const PipelineContextPtr& context, const ByteBuffer& buffer, const Any &object) override final {
+        T* typedObject = CALLER AnyCast<T*>(object);
         handleTypeRead(context, buffer, typedObject);
     }
 protected:
@@ -94,21 +94,21 @@ class CALLER_DLL_EXPORT PipelineMultiTypeReadStage : public PipelineReadStage, p
     PipelineMultiTypeReadStage() = default;
     virtual ~PipelineMultiTypeReadStage() override = default;
  public:
-    virtual void handleRead(const PipelineContextPtr &context, const ByteBuffer &buffer, const any &object) override final {
+    virtual void handleRead(const PipelineContextPtr &context, const ByteBuffer &buffer, const Any &object) override final {
       invokeBaseReader<Types...>(context, buffer, object);
     }
 
  protected:
     template <typename T>
-    void invokeBaseReader(const PipelineContextPtr &context, const ByteBuffer &buffer, const any &object) {
-      typename std::conditional< std::is_pointer<T>::value, T, const T &>::type arg = CALLER any_cast<T>(object);
+    void invokeBaseReader(const PipelineContextPtr &context, const ByteBuffer &buffer, const Any &object) {
+      typename std::conditional< std::is_pointer<T>::value, T, const T &>::type arg = CALLER AnyCast<T>(object);
       PipelineTypeReadHandlerBase<T>::invokeReadHandler(context, buffer, arg);
     }
 
     template <typename T, typename ...Args, typename std::enable_if<sizeof ...(Args) != 0, int>::type = 0>
-    void invokeBaseReader(const PipelineContextPtr &context, const ByteBuffer &buffer, const any &object) {
+    void invokeBaseReader(const PipelineContextPtr &context, const ByteBuffer &buffer, const Any &object) {
       try {
-        typename std::conditional< std::is_pointer<T>::value, T, const T &>::type arg = CALLER any_cast<T>(object);
+        typename std::conditional< std::is_pointer<T>::value, T, const T &>::type arg = CALLER AnyCast<T>(object);
         PipelineTypeReadHandlerBase<T>::invokeReadHandler(context, buffer, arg);
       }  catch (const std::exception &) {
         invokeBaseReader<Args...>(context, buffer, object);

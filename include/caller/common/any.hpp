@@ -15,57 +15,57 @@
 CALLER_BEGIN
 
 #if __cplusplus >= 201703L
-    typedef ::std::any any;
+    typedef ::std::any Any;
 #else
-    typedef boost::any any;
+    typedef boost::any Any;
 #endif
 
 template<typename ValueType>
-ValueType * any_cast(any * operand) CALLER_NOEXCEPT
+ValueType * AnyCast(Any * operand) CALLER_NOEXCEPT
 {
     return ANY_NAMESPACE any_cast<ValueType>(operand);
 }
 
 template<typename ValueType>
-inline const ValueType * any_cast(const any * operand) CALLER_NOEXCEPT
+inline const ValueType * AnyCast(const Any * operand) CALLER_NOEXCEPT
 {
     return ANY_NAMESPACE any_cast<ValueType>(operand);
 }
 
 template<typename ValueType>
-ValueType any_cast(any & operand)
+ValueType AnyCast(Any & operand)
 {
     return ANY_NAMESPACE any_cast<ValueType>(operand);
 }
 
 template<typename ValueType>
-inline ValueType any_cast(const any & operand)
+inline ValueType AnyCast(const Any & operand)
 {
     return ANY_NAMESPACE any_cast<ValueType>(operand);
 }
 
 template<typename ValueType>
-inline ValueType any_cast(any&& operand)
+inline ValueType AnyCast(Any&& operand)
 {
     return ANY_NAMESPACE any_cast<ValueType>(std::move(operand));
 }
 
 template<typename ValueType>
-inline ValueType * unsafe_any_cast(any * operand) CALLER_NOEXCEPT
+inline ValueType * UnsafeAnyCast(Any * operand) CALLER_NOEXCEPT
 {
     return ANY_NAMESPACE any_cast<ValueType>(operand);
 }
 
 template<typename ValueType>
-inline const ValueType * unsafe_any_cast(const any * operand) CALLER_NOEXCEPT
+inline const ValueType * UnsafeAnyCast(const Any * operand) CALLER_NOEXCEPT
 {
     return ANY_NAMESPACE any_cast<ValueType>(operand);
 }
 
-class Variant : public any
+class Variant : public Any
 {
 public:
-    using any::any;
+    using Any::Any;
 public:
     template<typename T>
     T convertTo(bool *success = nullptr) const {
@@ -73,7 +73,7 @@ public:
             if (success != nullptr) {
                 *success = true;
             }
-            return CALLER any_cast<T>(*this);
+            return CALLER AnyCast<T>(*this);
         } catch(...) {
             if (success != nullptr) {
                 *success = false;
@@ -88,7 +88,7 @@ public:
             if (success != nullptr) {
                 *success = true;
             }
-            return CALLER any_cast<T>(*this);
+            return CALLER AnyCast<T>(*this);
         } catch(...) {
             if (success != nullptr) {
                 *success = false;

@@ -18,8 +18,8 @@ public:
     PipelineTypeWriteStage() = default;
     virtual ~PipelineTypeWriteStage() override = default;
 public:
-    virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer & buffer, const any &object) override final {
-        T typedObject = CALLER any_cast<T>(object);
+    virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer & buffer, const Any &object) override final {
+        T typedObject = CALLER AnyCast<T>(object);
         handleTypeWrite(context, buffer, typedObject);
     }
 protected:
@@ -32,8 +32,8 @@ public:
     PipelineTypeWriteStage() = default;
     virtual ~PipelineTypeWriteStage() override = default;
 public:
-    virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer & buffer, const any &object) override final {
-        T* typedObject = CALLER any_cast<T*>(object);
+    virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer & buffer, const Any &object) override final {
+        T* typedObject = CALLER AnyCast<T*>(object);
         handleTypeWrite(context, buffer, typedObject);
     }
 protected:
@@ -94,21 +94,21 @@ class CALLER_DLL_EXPORT PipelineMultiTypeWriteStage : public PipelineWriteStage,
     PipelineMultiTypeWriteStage() = default;
     virtual ~PipelineMultiTypeWriteStage() override = default;
  public:
-    virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer &buffer, const any &object) override final {
+    virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer &buffer, const Any &object) override final {
       invokeBaseWriter<Types...>(context, buffer, object);
     }
 
  protected:
     template <typename T>
-    void invokeBaseWriter(const PipelineContextPtr &context, ByteBuffer &buffer, const any &object) {
-      typename std::conditional< std::is_pointer<T>::value, T, const T &>::type arg = CALLER any_cast<T>(object);
+    void invokeBaseWriter(const PipelineContextPtr &context, ByteBuffer &buffer, const Any &object) {
+      typename std::conditional< std::is_pointer<T>::value, T, const T &>::type arg = CALLER AnyCast<T>(object);
       PipelineTypeWriteHandlerBase<T>::invokeWriteHandler(context, buffer, arg);
     }
 
     template <typename T, typename ...Args, typename std::enable_if<sizeof ...(Args) != 0, int>::type = 0>
-    void invokeBaseWriter(const PipelineContextPtr &context, ByteBuffer &buffer, const any &object) {
+    void invokeBaseWriter(const PipelineContextPtr &context, ByteBuffer &buffer, const Any &object) {
       try {
-        typename std::conditional< std::is_pointer<T>::value, T, const T &>::type arg = CALLER any_cast<T>(object);
+        typename std::conditional< std::is_pointer<T>::value, T, const T &>::type arg = CALLER AnyCast<T>(object);
         PipelineTypeWriteHandlerBase<T>::invokeWriteHandler(context, buffer, arg);
       }  catch (const std::exception &) {
         invokeBaseWriter<Args...>(context, buffer, object);

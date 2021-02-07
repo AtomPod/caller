@@ -28,8 +28,8 @@ public:
     void pipelineInactive(PipelineContextPtr context)       ;
     void pipelineWriteComplete(PipelineContextPtr context)  ;
     void pipelineReadComplete(PipelineContextPtr context)   ;
-    void handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object) ;
-    void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object) ;
+    void handleRead(PipelineContextPtr context, ByteBuffer buffer, const Any &object) ;
+    void handleWrite(PipelineContextPtr context, ByteBuffer buffer, const Any &object) ;
     void causeException(PipelineContextPtr context, const std::exception &e) ;
 private:
     const PipelineStagePtr _M_FirstStage;

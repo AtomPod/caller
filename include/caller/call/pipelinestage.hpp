@@ -46,11 +46,11 @@ public:
         invokePipelineReadComplete(ctx);
     }
 
-    virtual void handleRead(const PipelineContextPtr &context, const ByteBuffer &buffer, const any &object) {
+    virtual void handleRead(const PipelineContextPtr &context, const ByteBuffer &buffer, const Any &object) {
         invokeReader(context, buffer, object);
     }
 
-    virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer & buffer, const any &object) {
+    virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer & buffer, const Any &object) {
         invokeWriter(context, buffer, object);
     }
 
@@ -148,7 +148,7 @@ protected:
         }
     }
 
-    void invokeWriter(const PipelineContextPtr & ctx, ByteBuffer & buffer, const any &object) {
+    void invokeWriter(const PipelineContextPtr & ctx, ByteBuffer & buffer, const Any &object) {
         if (auto next = findWritableStage(); next != nullptr) {
             auto executor = next->executor();
 
@@ -162,7 +162,7 @@ protected:
         }
     }
 
-    void invokeReader(const PipelineContextPtr & ctx, const ByteBuffer & buffer, const any &object) {
+    void invokeReader(const PipelineContextPtr & ctx, const ByteBuffer & buffer, const Any &object) {
         if (auto next = findReadableStage(); next != nullptr) {
             auto executor = next->executor();
 

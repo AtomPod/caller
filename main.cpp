@@ -47,8 +47,6 @@ class Test2Read : public PipelineMultiTypeReadStage<int, double> {
 };
 
 
-const Test2Read *r = new Test2Read();
-
 class TestReadPipeline : public CALLER PipelineReadStage
 {
 public:
@@ -60,7 +58,7 @@ protected:
 
         CALLER ByteBuffer buffer;
         buffer.copy(message, strlen(message));
-        context->write(any(), buffer);
+        context->write(Any(), buffer);
     }
 
     virtual void pipelineInactive(const PipelineContextPtr & context) {
@@ -111,7 +109,7 @@ protected:
 
     virtual void handleRead(const PipelineContextPtr &context,
                              const ByteBuffer &buffer,
-                            const any &object) override {
+                            const Any &object) override {
         std::cout << StringView(buffer.data(), buffer.readableLength());
         invokeReader(context, buffer, object);
     }
@@ -312,7 +310,7 @@ public:
 
     }
 
-    virtual void handleRead(const PipelineContextPtr &context, const ByteBuffer &buffer, const any &object) override  {
+    virtual void handleRead(const PipelineContextPtr &context, const ByteBuffer &buffer, const Any &object) override  {
         std::chrono::steady_clock::time_point beg = std::chrono::steady_clock::now();
         DelimiterBasedFrameDecoder::handleRead(context, buffer, object);
         auto end = std::chrono::steady_clock::now();
@@ -425,7 +423,7 @@ public:
             auto now = std::chrono::steady_clock::now();
             r.callback = [now](EventPtr ptr) {
                 auto end = std::chrono::steady_clock::now();
-                auto msg = CALLER any_cast<MessagePtr>(ptr->payload());
+                auto msg = CALLER AnyCast<MessagePtr>(ptr->payload());
                 std::cout << "recv message: " << msg->sequenceNumber() << ", ns: " << (end - now).count() << '\n';
             };
 
@@ -502,7 +500,7 @@ int main()
             auto now = std::chrono::steady_clock::now();
             r.callback = [now](EventPtr ptr) {
                 auto end = std::chrono::steady_clock::now();
-                auto msg = CALLER any_cast<MessagePtr>(ptr->payload());
+                auto msg = CALLER AnyCast<MessagePtr>(ptr->payload());
                 auto m   = StaticCastRefPtr<NewMessage>(msg);
                 std::cout << "recv message: " << m->getName().c_str() << ", ns: " << (end - now).count() << '\n';
                 std::cout << "running at thread: " << std::this_thread::get_id() << '\n';
@@ -538,7 +536,7 @@ int main()
             auto now = std::chrono::steady_clock::now();
             r.callback = [now](EventPtr ptr) {
                 auto end = std::chrono::steady_clock::now();
-                auto msg = CALLER any_cast<MessagePtr>(ptr->payload());
+                auto msg = CALLER AnyCast<MessagePtr>(ptr->payload());
                 auto m   = StaticCastRefPtr<NewMessage>(msg);
                 std::cout << "recv message: " << m->getName().c_str() << ", ns: " << (end - now).count() << '\n';
                 std::cout << "running at thread: " << std::this_thread::get_id() << '\n';

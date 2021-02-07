@@ -24,7 +24,7 @@ public:
     virtual Future<void>        disconnect()                                        override;
     virtual Future<void>        close()                                             override;
     virtual void                read(ByteBuffer buffer)                             override;
-    virtual void                write(const any &object, const ByteBuffer &buffer)  override;
+    virtual void                write(const Any &object, const ByteBuffer &buffer)  override;
     virtual Executor*           executor()                                          override;
     virtual IOHandler*          handler()                                           override;
 public:

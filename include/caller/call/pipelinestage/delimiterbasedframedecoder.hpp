@@ -21,7 +21,7 @@ public:
 
     virtual ~DelimiterBasedFrameDecoder() override{}
 public:
-    virtual void handleRead(const PipelineContextPtr &context, const ByteBuffer &buffer, const any &object) override {
+    virtual void handleRead(const PipelineContextPtr &context, const ByteBuffer &buffer, const Any &object) override {
         UNUSED(object);
 
         Container DataList;

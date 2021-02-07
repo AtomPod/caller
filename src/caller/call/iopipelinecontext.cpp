@@ -13,7 +13,7 @@ public:
     StreamReadStage(size_t buffersize = 4096) : _M_ReadBuffer(buffersize) {}
     virtual ~StreamReadStage() override = default;
 public:
-    virtual void handleRead(const PipelineContextPtr & context, const ByteBuffer &buffer, const any &object) override {
+    virtual void handleRead(const PipelineContextPtr & context, const ByteBuffer &buffer, const Any &object) override {
         UNUSED(buffer);
         UNUSED(object);
         context->notifyReadComplete();
@@ -46,7 +46,7 @@ public:
     ReadCompleteStage()  {}
     virtual ~ReadCompleteStage() override = default;
 public:
-    virtual void handleRead(const PipelineContextPtr & context, const ByteBuffer &buffer, const any &object) override {
+    virtual void handleRead(const PipelineContextPtr & context, const ByteBuffer &buffer, const Any &object) override {
         UNUSED(buffer);
         UNUSED(object);
         context->notifyReadComplete();
@@ -62,16 +62,16 @@ public:
 
     virtual ~IOWriteStage() override = default;
 public:
-    virtual void handleRead(const PipelineContextPtr & context, const ByteBuffer &buffer, const any &object)  override {
+    virtual void handleRead(const PipelineContextPtr & context, const ByteBuffer &buffer, const Any &object)  override {
         invokeReader(context, buffer, object);
     }
 
-    virtual void handleWrite(const PipelineContextPtr & context, ByteBuffer &buffer, const any &object) override {
+    virtual void handleWrite(const PipelineContextPtr & context, ByteBuffer &buffer, const Any &object) override {
         UNUSED(object);
         SocketEventRequestPtr socketEventListener = nullptr;
 
         try {
-          socketEventListener = CALLER any_cast<SocketEventRequestPtr>(object);
+          socketEventListener = CALLER AnyCast<SocketEventRequestPtr>(object);
         }  catch (const std::exception &) {
           socketEventListener = nullptr;
         }
@@ -169,7 +169,7 @@ void IOPipelineContext::read(ByteBuffer buffer)
             buffer.setReadableLength(*bytes);
 
             try {
-                self->_M_Pipeline->handleRead(self, buffer, any());
+                self->_M_Pipeline->handleRead(self, buffer, Any());
             } catch (const std::exception &e) {
                 self->notifyException(e);
             }
@@ -186,7 +186,7 @@ void IOPipelineContext::read(ByteBuffer buffer)
     }));
 }
 
-void IOPipelineContext::write(const any &object, const ByteBuffer &buffer)
+void IOPipelineContext::write(const Any &object, const ByteBuffer &buffer)
 {
     auto self = shared_from_this();
     executor()->execute([self, object, buffer]() {

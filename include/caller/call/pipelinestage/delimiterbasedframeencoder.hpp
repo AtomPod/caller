@@ -13,8 +13,8 @@ public:
     DelimiterBasedFrameEncoder(){}
     virtual ~DelimiterBasedFrameEncoder() override {}
 public:
-    virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer &buffer, const any &object) override {
-        ObjectType encodeObject = CALLER any_cast<ObjectType>(object);
+    virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer &buffer, const Any &object) override {
+        ObjectType encodeObject = CALLER AnyCast<ObjectType>(object);
         if (encode(context, encodeObject, buffer)) {
             invokeWriter(context, buffer, object);
         }

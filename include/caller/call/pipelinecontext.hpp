@@ -20,7 +20,7 @@ public:
     virtual Future<void>        disconnect()                                        = 0;
     virtual Future<void>        close()                                             = 0;
     virtual void                read(ByteBuffer buffer)                             = 0;
-    virtual void                write(const any &object, const ByteBuffer &buffer)  = 0;
+    virtual void                write(const Any &object, const ByteBuffer &buffer)  = 0;
     virtual Executor*           executor()                                          = 0;
     virtual IOHandler*          handler()                                           = 0;
 

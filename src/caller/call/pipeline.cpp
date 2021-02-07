@@ -94,7 +94,7 @@ void Pipeline::pipelineReadComplete(PipelineContextPtr context)
     }
 }
 
-void Pipeline::handleRead(PipelineContextPtr context, ByteBuffer buffer, const any &object)
+void Pipeline::handleRead(PipelineContextPtr context, ByteBuffer buffer, const Any &object)
 {
     try {
         PipelineStagePtr first = nullptr;
@@ -111,7 +111,7 @@ void Pipeline::handleRead(PipelineContextPtr context, ByteBuffer buffer, const a
     }
 }
 
-void Pipeline::handleWrite(PipelineContextPtr context, ByteBuffer buffer, const any &object)
+void Pipeline::handleWrite(PipelineContextPtr context, ByteBuffer buffer, const Any &object)
 {
     try {
         PipelineStagePtr first = nullptr;

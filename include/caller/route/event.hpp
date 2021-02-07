@@ -13,7 +13,7 @@ CALLER_BEGIN
 class CALLER_DLL_EXPORT Event {
 public:
     typedef ID 				ID;
-    typedef CALLER any		Any;
+    typedef CALLER Any		Any;
 
 public:
     static EventPtr make(const ID &id, const ID &sequenceNumber, const Any &payload, const Error &e = Error());

@@ -29,12 +29,12 @@ class SocketEventRequest : public std::enable_shared_from_this<SocketEventReques
   virtual void writeComplete(int64_t bytes) = 0;
   virtual void readComplete(int64_t bytes) = 0;
   virtual void error(const ErrorType &errType, Error err) = 0;
-  virtual any  extraData() = 0;
+  virtual Any  extraData() = 0;
 
   template<typename T>
   inline T typedExtraData() {
-    any data = extraData();
-    T typedData = CALLER any_cast<T>(data);
+    Any data = extraData();
+    T typedData = CALLER AnyCast<T>(data);
     return typedData;
   }
 };
@@ -46,11 +46,11 @@ class SocketEventRequestBase : public SocketEventRequest {
   virtual void writeComplete(int64_t) override {}
   virtual void readComplete(int64_t) override {}
   virtual void error(const ErrorType &, Error) override {}
-  virtual any  extraData() override { return _M_ExtraData; }
+  virtual Any  extraData() override { return _M_ExtraData; }
  public:
-  void setExtraData(const any &extraData) { _M_ExtraData = extraData; }
+  void setExtraData(const Any &extraData) { _M_ExtraData = extraData; }
  private:
-  any _M_ExtraData;
+  Any _M_ExtraData;
 };
 
 class SocketEventMonitoredRequest : public SocketEventRequestBase {
