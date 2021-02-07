@@ -33,6 +33,21 @@ struct Data {
     int age;
 };
 
+class Test2Read : public PipelineMultiTypeReadStage<int, double> {
+ protected:
+    virtual void handleTypeRead(const PipelineContextPtr& context, const ByteBuffer& buffer,
+                                const double  &object) override {
+      invokeReader(context, buffer, context);
+    }
+
+    virtual void handleTypeRead(const PipelineContextPtr& context, const ByteBuffer& buffer,
+                                const int  &object) override {
+
+    }
+};
+
+
+const Test2Read *r = new Test2Read();
 
 class TestReadPipeline : public CALLER PipelineReadStage
 {

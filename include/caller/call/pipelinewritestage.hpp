@@ -43,7 +43,7 @@ protected:
 template <typename T>
 class CALLER_DLL_EXPORT PipelineTypeWriteHandlerBase {
  protected:
-    void invokeHandler(const PipelineContextPtr &context, ByteBuffer &buffer,
+    void invokeWriteHandler(const PipelineContextPtr &context, ByteBuffer &buffer,
                      typename std::conditional< std::is_pointer<T>::value, T, const T &>::type object) {
       handleTypeWrite(context, buffer, object);
     }
@@ -95,23 +95,23 @@ class CALLER_DLL_EXPORT PipelineMultiTypeWriteStage : public PipelineWriteStage,
     virtual ~PipelineMultiTypeWriteStage() override = default;
  public:
     virtual void handleWrite(const PipelineContextPtr &context, ByteBuffer &buffer, const any &object) override final {
-      invoke<Types...>(context, buffer, object);
+      invokeBaseWriter<Types...>(context, buffer, object);
     }
 
  protected:
     template <typename T>
-    void invoke(const PipelineContextPtr &context, ByteBuffer &buffer, const any &object) {
+    void invokeBaseWriter(const PipelineContextPtr &context, ByteBuffer &buffer, const any &object) {
       typename std::conditional< std::is_pointer<T>::value, T, const T &>::type arg = CALLER any_cast<T>(object);
-      PipelineTypeWriteHandlerBase<T>::invokeHandler(context, buffer, arg);
+      PipelineTypeWriteHandlerBase<T>::invokeWriteHandler(context, buffer, arg);
     }
 
     template <typename T, typename ...Args, typename std::enable_if<sizeof ...(Args) != 0, int>::type = 0>
-    void invoke(const PipelineContextPtr &context, ByteBuffer &buffer, const any &object) {
+    void invokeBaseWriter(const PipelineContextPtr &context, ByteBuffer &buffer, const any &object) {
       try {
         typename std::conditional< std::is_pointer<T>::value, T, const T &>::type arg = CALLER any_cast<T>(object);
-        PipelineTypeWriteHandlerBase<T>::invokeHandler(context, buffer, arg);
+        PipelineTypeWriteHandlerBase<T>::invokeWriteHandler(context, buffer, arg);
       }  catch (const std::exception &) {
-        invoke<Args...>(context, buffer, object);
+        invokeBaseWriter<Args...>(context, buffer, object);
       }
     }
 };
