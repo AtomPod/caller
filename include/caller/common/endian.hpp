@@ -35,7 +35,6 @@ inline uint32_t cbswap(uint32_t d) {
             |((d & 0x00ff0000) >> 8)
             |((d & 0x0000ff00) << 8)
             |((d & 0x000000ff) << 24);
-
 }
 
 template<>

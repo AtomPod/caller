@@ -18,7 +18,6 @@ AsioTcpSocketHandler::~AsioTcpSocketHandler()
 
 Future<void> AsioTcpSocketHandler::bind(const Endpoint &endpoint)
 {
-
     return Future<void>();
 }
 

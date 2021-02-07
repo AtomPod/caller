@@ -191,7 +191,7 @@ public:
 };
 
 template <typename T>
-inline FutureInterface<T> makeEmptFutureInterface() {
+inline FutureInterface<T> makeEmptyFutureInterface() {
     FutureInterface<T> i;
     i.reportCanceled();
     return i;

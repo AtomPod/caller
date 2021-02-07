@@ -12,7 +12,7 @@ template <typename T>
 class Future
 {
 public:
-    Future() : m_interface(makeEmptFutureInterface<T>()){}
+    Future() : m_interface(makeEmptyFutureInterface<T>()){}
     Future(FutureInterface<T> *i) : m_interface(*i) {}
 
 public:
@@ -45,7 +45,7 @@ template <>
 class Future<void>
 {
 public:
-    Future() : m_interface(makeEmptFutureInterface<void>()) {}
+    Future() : m_interface(makeEmptyFutureInterface<void>()) {}
     Future(FutureInterface<void> *i) : m_interface(*i) {}
 
 public:

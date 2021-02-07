@@ -65,7 +65,7 @@ protected:
             }
         }));
 
-        invokePipelineActive(context);
+        invokePipelineInactive(context);
 
         //        context->connect(endpoint).whenCanceled([](const std::error_code &ec, const std::exception_ptr &e) {
         //            std::cout << "connect:" << ec.message() << std::endl;
