@@ -1,0 +1,3 @@
+[submodule "sigslot"]
+path = third_party/sigslot
+url = https://github.com/palacaze/sigslot.git
