@@ -1,7 +1,7 @@
-$$PWD/includePATH += $$PWD/include
+INCLUDEPATH += $$PWD/include
 
-$$PWD/include(third_party/asio/AsioLibrary.pri)
-$$PWD/include(third_party/sigslot/SigSlotLibrary.pri)
+include(third_party/asio/AsioLibrary.pri)
+include(third_party/sigslot/SigSlotLibrary.pri)
 
 SOURCES += \
         $$PWD/src/caller/call/iohandler.cpp \
